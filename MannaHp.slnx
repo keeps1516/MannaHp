@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Client/">
+    <Project Path="src/Client/MannaHp.Client.csproj" />
+  </Folder>
+  <Folder Name="/src/PrintAgent/">
+    <Project Path="src/PrintAgent/MannaHp.PrintAgent.csproj" />
+  </Folder>
+  <Folder Name="/src/Server/">
+    <Project Path="src/Server/MannaHp.Server.csproj" />
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/MannaHp.Shared.csproj" />
+  </Folder>
+</Solution>
