@@ -1,3 +1,5 @@
+using MannahHp.Shared.Enums;
+
 namespace MannahHp.Shared.Entities;
 
 public class Category
@@ -15,7 +17,7 @@ public class Ingredient
 {
     public Guid Id { get; set; }
     public string? Name { get; set; }
-    public string? Unit {  get; set; }
+    public UnitOfMeasure Unit { get; set; }
     public decimal CostPerUnit { get; set; }
     public decimal StockQuantity { get; set; }
     public decimal LowStockThreshold { get; set; }
