@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Server + Client",
+    "Projects": [
+      {
+        "Path": "src\\Server\\MannaHp.Server.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Client\\MannaHp.Client.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

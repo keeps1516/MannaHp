@@ -1,0 +1,125 @@
+@inject CartService Cart
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(MenuItem.Description))
+        {
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-3">
+                @MenuItem.Description
+            </MudText>
+        }
+
+        @foreach (var group in _ingredientGroups)
+        {
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mt-3 mb-1">
+                @group.Key
+            </MudText>
+            <MudDivider Class="mb-2" />
+
+            @foreach (var ingredient in group.Value)
+            {
+                var isSelected = _selectedIds.Contains(ingredient.Id);
+                <MudStack Row="true" AlignItems="AlignItems.Center" Class="py-1">
+                    <MudCheckBox T="bool" Value="isSelected"
+                                 ValueChanged="(val) => ToggleIngredient(ingredient, val)"
+                                 Color="Color.Primary" Dense="true" />
+                    <MudText Typo="Typo.body1" Style="flex: 1;">@ingredient.IngredientName</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Primary" Style="font-weight: 600;">
+                        $@ingredient.CustomerPrice.ToString("F2")
+                    </MudText>
+                </MudStack>
+            }
+        }
+
+        <MudDivider Class="my-3" />
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.subtitle2">Quantity</MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
+                           Color="Color.Primary" Disabled="@(_quantity <= 1)"
+                           OnClick="() => _quantity--" />
+            <MudText Typo="Typo.h6" Style="min-width: 32px; text-align: center;">@_quantity</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                           Color="Color.Primary" Disabled="@(_quantity >= 20)"
+                           OnClick="() => _quantity++" />
+        </MudStack>
+
+        <MudTextField T="string" @bind-Value="_notes" Label="Special instructions (optional)"
+                      Variant="Variant.Outlined" Lines="2" Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Style="width: 100%; padding: 0 16px 8px;">
+            <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 700;">
+                $@RunningTotal.ToString("F2")
+            </MudText>
+            <MudSpacer />
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@(_selectedIds.Count == 0)"
+                       OnClick="AddToCart">
+                Add to Cart
+            </MudButton>
+        </MudStack>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public MenuItemDto MenuItem { get; set; } = default!;
+
+    private Dictionary<string, List<AvailableIngredientDto>> _ingredientGroups = new();
+    private HashSet<Guid> _selectedIds = [];
+    private int _quantity = 1;
+    private string? _notes;
+
+    private decimal RunningTotal => _selectedIngredients.Sum(i => i.CustomerPrice) * _quantity;
+
+    private List<AvailableIngredientDto> _selectedIngredients =>
+        MenuItem.AvailableIngredients?
+            .Where(i => _selectedIds.Contains(i.Id))
+            .ToList() ?? [];
+
+    protected override void OnParametersSet()
+    {
+        if (MenuItem.AvailableIngredients is not null)
+        {
+            _ingredientGroups = MenuItem.AvailableIngredients
+                .Where(i => i.Active)
+                .OrderBy(i => i.SortOrder)
+                .GroupBy(i => i.GroupName)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Pre-select defaults
+            foreach (var ingredient in MenuItem.AvailableIngredients.Where(i => i.IsDefault && i.Active))
+            {
+                _selectedIds.Add(ingredient.Id);
+            }
+        }
+    }
+
+    private void ToggleIngredient(AvailableIngredientDto ingredient, bool selected)
+    {
+        if (selected)
+            _selectedIds.Add(ingredient.Id);
+        else
+            _selectedIds.Remove(ingredient.Id);
+    }
+
+    private void AddToCart()
+    {
+        Cart.AddItem(new CartItem
+        {
+            MenuItem = MenuItem,
+            SelectedIngredients = _selectedIngredients,
+            Quantity = _quantity,
+            Notes = _notes
+        });
+
+        Snackbar.Add($"{MenuItem.Name} added to cart!", Severity.Success);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,21 @@
+2026-02-13T04:53:44.1630114+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Version: 1.9.1+cb5afc3bb9bb01ebd75b57f89e8358b914ee2a49
+2026-02-13T04:53:44.1735080+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging mode: asynchronous
+2026-02-13T04:53:44.1748649+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging level: Information
+2026-02-13T04:53:44.1748833+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION CreateBuilderAsync entry time: 04:53:44.131
+2026-02-13T04:53:44.1750844+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION PID: 22132
+2026-02-13T04:53:44.1751182+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime information: win-x64 - .NET 10.0.2
+2026-02-13T04:53:44.1752158+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime location: C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.2\System.Private.CoreLib.dll
+2026-02-13T04:53:44.1752368+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION IsDynamicCodeSupported: True
+2026-02-13T04:53:44.1754447+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Test module: C:\Users\Keeps\Dev\MannaHp\tests\MannaHp.Server.Tests\bin\Debug\net10.0\MannaHp.Server.Tests.dll
+2026-02-13T04:53:44.1761773+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Command line arguments: '--server --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory C:\Users\Keeps\Dev\MannaHp\tests\MannaHp.Server.Tests\bin\Debug\net10.0\Log --results-directory C:\Users\Keeps\Dev\MannaHp\TestResults --client-port 60570'
+2026-02-13T04:53:44.1774801+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION TESTINGPLATFORM_DEFAULT_HANG_TIMEOUT: ''
+2026-02-13T04:53:44.2043100+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting RegisterEnvironmentVariablesConfigurationSource: 'True'
+2026-02-13T04:53:44.2250648+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting PlatformExitProcessOnUnhandledException: 'False', config file: False environment variable: 
+2026-02-13T04:53:44.6524884+00:00 Microsoft.Testing.Platform.Requests.TestHostTestFrameworkInvoker INFORMATION Test framework UID: '30ea7c6e-dd24-4152-a360-1387158cd41d' Version: '3.2.2' DisplayName: 'xUnit.net v3 Microsoft.Testing.Platform test framework' Description: 'xUnit.net v3 Microsoft.Testing.Platform test framework'
+2026-02-13T04:53:44.6660031+00:00 xUnit.net INFORMATION xUnit.net v3 In-Process Runner v3.2.2+728c1dce01 (64-bit .NET 10.0.2)
+2026-02-13T04:53:44.7172812+00:00 xUnit.net INFORMATION   Discovering: MannaHp.Server.Tests
+2026-02-13T04:53:44.7998038+00:00 xUnit.net INFORMATION   Discovered:  MannaHp.Server.Tests
+2026-02-13T04:53:44.8357570+00:00 xUnit.net INFORMATION   Starting:    MannaHp.Server.Tests
+2026-02-13T04:53:52.5850209+00:00 xUnit.net INFORMATION   Finished:    MannaHp.Server.Tests (ID = 'fcdaeae72eaf4d91fd372f5d5507398956e18472102e04ec83be93fe13384325')
+2026-02-13T04:53:52.5918865+00:00 xUnit.net INFORMATION === TEST EXECUTION SUMMARY ===
+2026-02-13T04:53:52.5976705+00:00 xUnit.net INFORMATION    MannaHp.Server.Tests  Total: 44, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 7.759s

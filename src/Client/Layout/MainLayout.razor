@@ -1,0 +1,51 @@
+@inherits LayoutComponentBase
+@inject CartService Cart
+
+<MudLayout>
+    <MudAppBar Elevation="2" Dense="true">
+        <MudText Typo="Typo.h5" Class="ml-2" Style="font-weight: 700; letter-spacing: 1px;">
+            MANNA
+        </MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.ShoppingCart"
+                       Color="Color.Inherit"
+                       OnClick="ToggleCart" />
+        @if (Cart.ItemCount > 0)
+        {
+            <MudBadge Content="@Cart.ItemCount"
+                      Color="Color.Secondary"
+                      Overlap="true"
+                      Class="mr-2"
+                      Style="margin-left: -28px; margin-top: -16px;" />
+        }
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_cartOpen" Anchor="Anchor.End" Elevation="1" Variant="DrawerVariant.Temporary" Width="360px">
+        <CartDrawer OnClose="ToggleCart" />
+    </MudDrawer>
+
+    <MudMainContent Class="pt-14 pb-4">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _cartOpen;
+
+    protected override void OnInitialized()
+    {
+        Cart.OnChange += StateHasChanged;
+    }
+
+    private void ToggleCart()
+    {
+        _cartOpen = !_cartOpen;
+    }
+
+    public void Dispose()
+    {
+        Cart.OnChange -= StateHasChanged;
+    }
+}

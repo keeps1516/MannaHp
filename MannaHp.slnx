@@ -12,4 +12,14 @@
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/MannaHp.Shared.csproj" />
   </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/MannaHp.Shared.Tests/">
+    <Project Path="tests/MannaHp.Shared.Tests/MannaHp.Shared.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/MannaHp.Client.Tests/">
+    <Project Path="tests/MannaHp.Client.Tests/MannaHp.Client.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/MannaHp.Server.Tests/">
+    <Project Path="tests/MannaHp.Server.Tests/MannaHp.Server.Tests.csproj" />
+  </Folder>
 </Solution>

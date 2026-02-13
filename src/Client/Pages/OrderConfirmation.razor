@@ -1,0 +1,128 @@
+@page "/order/{OrderId:guid}"
+@inject OrderService OrderSvc
+@inject NavigationManager Nav
+
+<PageTitle>Order Confirmation — Manna</PageTitle>
+
+@if (_loading)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="mt-8" Spacing="3">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        <MudText Typo="Typo.body1">Loading order...</MudText>
+    </MudStack>
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+}
+else if (_order is not null)
+{
+    <MudStack AlignItems="AlignItems.Center" Class="mt-6 mb-4" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success"
+                 Size="Size.Large" Style="font-size: 4rem;" />
+        <MudText Typo="Typo.h4" Style="font-weight: 700;" Color="Color.Primary">
+            Order Placed!
+        </MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary">
+            Thank you for your order. We'll get started on it right away.
+        </MudText>
+    </MudStack>
+
+    <MudPaper Elevation="1" Class="pa-4 mb-4" Style="border-radius: 12px;">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6" Style="font-weight: 600;">Order Details</MudText>
+            <MudChip T="string" Color="@GetStatusColor(_order.Status)" Size="Size.Small">
+                @_order.Status
+            </MudChip>
+        </MudStack>
+
+        <MudDivider Class="mb-3" />
+
+        @foreach (var item in _order.Items)
+        {
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-2">
+                <div>
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                        @item.Quantity x @item.MenuItemName
+                        @if (!string.IsNullOrEmpty(item.VariantName))
+                        {
+                            <span style="color: #6D4C41;"> (@item.VariantName)</span>
+                        }
+                    </MudText>
+                    @if (item.Ingredients is { Count: > 0 })
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @string.Join(", ", item.Ingredients.Select(i => i.IngredientName))
+                        </MudText>
+                    }
+                </div>
+                <MudText Typo="Typo.body1" Style="font-weight: 500; white-space: nowrap;">
+                    $@item.TotalPrice.ToString("F2")
+                </MudText>
+            </MudStack>
+        }
+
+        <MudDivider Class="my-3" />
+
+        <MudStack Spacing="1">
+            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.body2">Subtotal</MudText>
+                <MudText Typo="Typo.body2">$@_order.Subtotal.ToString("F2")</MudText>
+            </MudStack>
+            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Tax (@((_order.TaxRate * 100).ToString("F2"))%)
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">$@_order.Tax.ToString("F2")</MudText>
+            </MudStack>
+            <MudDivider Class="my-1" />
+            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.h6" Style="font-weight: 700;">Total</MudText>
+                <MudText Typo="Typo.h6" Style="font-weight: 700;" Color="Color.Primary">
+                    $@_order.Total.ToString("F2")
+                </MudText>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
+               Size="Size.Large" OnClick="@(() => Nav.NavigateTo("/"))">
+        Order Again
+    </MudButton>
+}
+
+@code {
+    [Parameter] public Guid OrderId { get; set; }
+
+    private OrderDto? _order;
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _order = await OrderSvc.GetOrderAsync(OrderId);
+            if (_order is null)
+                _error = "Order not found.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load order. ({ex.Message})";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Color GetStatusColor(OrderStatus status) => status switch
+    {
+        OrderStatus.Received => Color.Info,
+        OrderStatus.Preparing => Color.Warning,
+        OrderStatus.Ready => Color.Success,
+        OrderStatus.Completed => Color.Default,
+        OrderStatus.Cancelled => Color.Error,
+        _ => Color.Default
+    };
+}

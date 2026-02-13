@@ -1,0 +1,138 @@
+@page "/"
+@inject MenuService MenuSvc
+@inject IDialogService DialogService
+
+<PageTitle>Manna — Menu</PageTitle>
+
+@if (_loading)
+{
+    <MudStack Spacing="4" Class="mt-4">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="48px" />
+        <MudGrid>
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" />
+                </MudItem>
+            }
+        </MudGrid>
+    </MudStack>
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
+}
+else
+{
+    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
+             PanelClass="pt-4" Class="mt-2">
+        @foreach (var category in _categories)
+        {
+            var itemsInCategory = _menuItems
+                .Where(m => m.CategoryId == category.Id && m.Active)
+                .OrderBy(m => m.SortOrder)
+                .ToList();
+
+            @if (itemsInCategory.Count > 0)
+            {
+                <MudTabPanel Text="@category.Name">
+                    <MudGrid Spacing="3">
+                        @foreach (var item in itemsInCategory)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Elevation="1" Class="menu-card" @onclick="() => OpenItemDialog(item)"
+                                         Style="cursor: pointer; height: 100%; transition: box-shadow 0.2s;">
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.h6">@item.Name</MudText>
+                                        @if (!string.IsNullOrEmpty(item.Description))
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                                @item.Description
+                                            </MudText>
+                                        }
+                                    </MudCardContent>
+                                    <MudCardActions>
+                                        <MudText Typo="Typo.subtitle1" Color="Color.Primary"
+                                                 Style="font-weight: 600; padding-left: 8px;">
+                                            @FormatPrice(item)
+                                        </MudText>
+                                        <MudSpacer />
+                                        <MudIcon Icon="@Icons.Material.Filled.AddCircle"
+                                                 Color="Color.Secondary" Size="Size.Medium" />
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudTabPanel>
+            }
+        }
+    </MudTabs>
+}
+
+@code {
+    private List<CategoryDto> _categories = [];
+    private List<MenuItemDto> _menuItems = [];
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _categories = await MenuSvc.GetCategoriesAsync();
+            _menuItems = await MenuSvc.GetMenuItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load menu. Please try again. ({ex.Message})";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string FormatPrice(MenuItemDto item)
+    {
+        if (item.IsCustomizable)
+        {
+            return "Build Your Own";
+        }
+
+        var activeVariants = item.Variants.Where(v => v.Active).OrderBy(v => v.SortOrder).ToList();
+        if (activeVariants.Count == 0)
+            return "";
+
+        if (activeVariants.Count == 1)
+            return $"${activeVariants[0].Price:F2}";
+
+        var min = activeVariants.Min(v => v.Price);
+        return $"from ${min:F2}";
+    }
+
+    private async Task OpenItemDialog(MenuItemDto item)
+    {
+        var parameters = new DialogParameters
+        {
+            { "MenuItem", item }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseOnEscapeKey = true,
+            NoHeader = false
+        };
+
+        if (item.IsCustomizable)
+        {
+            await DialogService.ShowAsync<BowlBuilderDialog>(item.Name, parameters, options);
+        }
+        else
+        {
+            await DialogService.ShowAsync<FixedItemDialog>(item.Name, parameters, options);
+        }
+    }
+}

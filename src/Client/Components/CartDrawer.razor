@@ -1,0 +1,141 @@
+@inject CartService Cart
+@inject OrderService OrderSvc
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<MudStack Class="pa-4" Style="height: 100%; overflow-y: auto;" Justify="Justify.SpaceBetween">
+    <div>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+            <MudText Typo="Typo.h6" Style="font-weight: 700;">Your Order</MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                           OnClick="Close" />
+        </MudStack>
+
+        @if (Cart.Items.Count == 0)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="mt-8" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Size="Size.Large"
+                         Color="Color.Default" Style="opacity: 0.3;" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Your cart is empty</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Tap a menu item to get started
+                </MudText>
+            </MudStack>
+        }
+        else
+        {
+            @foreach (var item in Cart.Items)
+            {
+                <MudPaper Elevation="0" Class="pa-3 mb-2" Style="background: #FAF5F0; border-radius: 8px;">
+                    <MudStack Row="true" AlignItems="AlignItems.Start">
+                        <div style="flex: 1;">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                                @item.DisplayName
+                            </MudText>
+                            @if (item.SelectedIngredients is { Count: > 0 })
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @string.Join(", ", item.SelectedIngredients.Select(i => i.IngredientName))
+                                </MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(item.Notes))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-style: italic;">
+                                    @item.Notes
+                                </MudText>
+                            }
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="() => Cart.RemoveItem(item.Id)" />
+                    </MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+                        <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="() => Cart.UpdateQuantity(item.Id, item.Quantity - 1)" />
+                        <MudText Typo="Typo.body2" Style="min-width: 24px; text-align: center;">
+                            @item.Quantity
+                        </MudText>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="() => Cart.UpdateQuantity(item.Id, item.Quantity + 1)" />
+                        <MudSpacer />
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary" Style="font-weight: 600;">
+                            $@item.LineTotal.ToString("F2")
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+            }
+        }
+    </div>
+
+    @if (Cart.Items.Count > 0)
+    {
+        <div>
+            <MudDivider Class="mb-3" />
+            <MudStack Spacing="1" Class="mb-3">
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2">Subtotal</MudText>
+                    <MudText Typo="Typo.body2">$@Cart.Subtotal.ToString("F2")</MudText>
+                </MudStack>
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Tax (8.25%)</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">$@Cart.Tax.ToString("F2")</MudText>
+                </MudStack>
+                <MudDivider Class="my-1" />
+                <MudStack Row="true" Justify="Justify.SpaceBetween">
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;">Total</MudText>
+                    <MudText Typo="Typo.h6" Style="font-weight: 700;" Color="Color.Primary">
+                        $@Cart.Total.ToString("F2")
+                    </MudText>
+                </MudStack>
+            </MudStack>
+
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
+                       Size="Size.Large" Disabled="_placing"
+                       OnClick="PlaceOrder">
+                @if (_placing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Surface" Class="mr-2" />
+                    <span>Placing Order...</span>
+                }
+                else
+                {
+                    <span>Place Order</span>
+                }
+            </MudButton>
+        </div>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool _placing;
+
+    private async Task Close() => await OnClose.InvokeAsync();
+
+    private async Task PlaceOrder()
+    {
+        _placing = true;
+        try
+        {
+            var order = await OrderSvc.PlaceOrderAsync(Cart.Items, PaymentMethod.InStore);
+            if (order is not null)
+            {
+                Cart.Clear();
+                await OnClose.InvokeAsync();
+                Nav.NavigateTo($"/order/{order.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to place order: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _placing = false;
+        }
+    }
+}
