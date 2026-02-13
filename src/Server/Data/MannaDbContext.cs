@@ -1,4 +1,4 @@
-using MannahHp.Shared.Entities;
+using MannaHp.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MannaHp.Server.Data;

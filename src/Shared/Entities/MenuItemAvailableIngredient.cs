@@ -1,4 +1,4 @@
-namespace MannahHp.Shared.Entities;
+namespace MannaHp.Shared.Entities;
 
 public class MenuItemAvailableIngredient
 {

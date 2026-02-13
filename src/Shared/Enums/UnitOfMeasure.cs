@@ -1,4 +1,4 @@
-namespace MannahHp.Shared.Enums;
+namespace MannaHp.Shared.Enums;
 
 public enum MeasurementType
 {

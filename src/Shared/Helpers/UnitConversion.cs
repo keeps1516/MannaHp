@@ -1,6 +1,6 @@
-using MannahHp.Shared.Enums;
+using MannaHp.Shared.Enums;
 
-namespace MannahHp.Shared.Helpers;
+namespace MannaHp.Shared.Helpers;
 
 public static class UnitConversion
 {

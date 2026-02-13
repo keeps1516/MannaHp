@@ -22,7 +22,7 @@ namespace MannaHp.Server.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.Category", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -53,7 +53,7 @@ namespace MannaHp.Server.Data.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.Ingredient", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.Ingredient", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -96,7 +96,7 @@ namespace MannaHp.Server.Data.Migrations
                     b.ToTable("ingredients", (string)null);
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItem", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -141,7 +141,7 @@ namespace MannaHp.Server.Data.Migrations
                     b.ToTable("menu_items", (string)null);
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItemAvailableIngredient", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItemAvailableIngredient", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -190,7 +190,7 @@ namespace MannaHp.Server.Data.Migrations
                     b.ToTable("menu_item_available_ingredients", (string)null);
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItemVariant", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItemVariant", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -228,7 +228,7 @@ namespace MannaHp.Server.Data.Migrations
                     b.ToTable("menu_item_variants", (string)null);
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.RecipeIngredient", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.RecipeIngredient", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -253,24 +253,24 @@ namespace MannaHp.Server.Data.Migrations
                     b.ToTable("recipe_ingredients", (string)null);
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItem", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItem", b =>
                 {
-                    b.HasOne("MannahHp.Shared.Entities.Category", null)
+                    b.HasOne("MannaHp.Shared.Entities.Category", null)
                         .WithMany("MenuItems")
                         .HasForeignKey("Categoryid")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItemAvailableIngredient", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItemAvailableIngredient", b =>
                 {
-                    b.HasOne("MannahHp.Shared.Entities.Ingredient", "Ingredient")
+                    b.HasOne("MannaHp.Shared.Entities.Ingredient", "Ingredient")
                         .WithMany()
                         .HasForeignKey("IngredientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MannahHp.Shared.Entities.MenuItem", "MenuItem")
+                    b.HasOne("MannaHp.Shared.Entities.MenuItem", "MenuItem")
                         .WithMany("AvailableIngredients")
                         .HasForeignKey("MenuItemId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -281,9 +281,9 @@ namespace MannaHp.Server.Data.Migrations
                     b.Navigation("MenuItem");
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItemVariant", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItemVariant", b =>
                 {
-                    b.HasOne("MannahHp.Shared.Entities.MenuItem", "MenuItem")
+                    b.HasOne("MannaHp.Shared.Entities.MenuItem", "MenuItem")
                         .WithMany("Variants")
                         .HasForeignKey("MenuItemId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -292,15 +292,15 @@ namespace MannaHp.Server.Data.Migrations
                     b.Navigation("MenuItem");
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.RecipeIngredient", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.RecipeIngredient", b =>
                 {
-                    b.HasOne("MannahHp.Shared.Entities.Ingredient", "Ingredient")
+                    b.HasOne("MannaHp.Shared.Entities.Ingredient", "Ingredient")
                         .WithMany()
                         .HasForeignKey("IngredientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MannahHp.Shared.Entities.MenuItemVariant", "Variant")
+                    b.HasOne("MannaHp.Shared.Entities.MenuItemVariant", "Variant")
                         .WithMany("RecipeIngredients")
                         .HasForeignKey("VariantId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -311,19 +311,19 @@ namespace MannaHp.Server.Data.Migrations
                     b.Navigation("Variant");
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.Category", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.Category", b =>
                 {
                     b.Navigation("MenuItems");
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItem", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItem", b =>
                 {
                     b.Navigation("AvailableIngredients");
 
                     b.Navigation("Variants");
                 });
 
-            modelBuilder.Entity("MannahHp.Shared.Entities.MenuItemVariant", b =>
+            modelBuilder.Entity("MannaHp.Shared.Entities.MenuItemVariant", b =>
                 {
                     b.Navigation("RecipeIngredients");
                 });

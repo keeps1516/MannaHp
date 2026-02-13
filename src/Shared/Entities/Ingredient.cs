@@ -1,6 +1,6 @@
-using MannahHp.Shared.Enums;
+using MannaHp.Shared.Enums;
 
-namespace MannahHp.Shared.Entities;
+namespace MannaHp.Shared.Entities;
 
 public class Ingredient
 {
