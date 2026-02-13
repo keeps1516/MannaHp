@@ -9,7 +9,7 @@ public class MenuItem
     public bool IsCustomizable { get; set; }
     public bool Active { get; set; }
     public int SortOrder { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
     public List<MenuItemVariant> Variants { get; set; } = [];
     public List<MenuItemAvailableIngredient> AvailableIngredients { get; set; } = [];
 }

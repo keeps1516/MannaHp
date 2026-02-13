@@ -27,6 +27,14 @@ public class MannaDbContext : DbContext
             e.Property(c => c.SortOrder).HasDefaultValue(0);
             e.Property(c => c.Active).HasDefaultValue(true);
             e.Property(c => c.CreatedAt).HasDefaultValueSql("now()");
+
+            e.HasData(
+                new Category { Id = Guid.Parse("a1b2c3d4-0001-0000-0000-000000000001"), Name = "Bowls", SortOrder = 1, Active = true },
+                new Category { Id = Guid.Parse("a1b2c3d4-0002-0000-0000-000000000002"), Name = "Traditional Drinks", SortOrder = 2, Active = true },
+                new Category { Id = Guid.Parse("a1b2c3d4-0003-0000-0000-000000000003"), Name = "Seasonal Specials", SortOrder = 3, Active = true },
+                new Category { Id = Guid.Parse("a1b2c3d4-0004-0000-0000-000000000004"), Name = "Sides & Drinks", SortOrder = 4, Active = true },
+                new Category { Id = Guid.Parse("a1b2c3d4-0005-0000-0000-000000000005"), Name = "Add-Ons", SortOrder = 5, Active = true }
+            );
         });
 
         // ── Ingredient ──

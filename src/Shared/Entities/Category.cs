@@ -6,7 +6,7 @@ public class Category
     public string Name { get; set; } = string.Empty;
     public int SortOrder { get; set; }
     public bool Active { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 
     public List<MenuItem> MenuItems { get; set; } = [];
 }

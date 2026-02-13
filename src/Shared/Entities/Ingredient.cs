@@ -11,5 +11,5 @@ public class Ingredient
     public decimal StockQuantity { get; set; }
     public decimal LowStockThreshold { get; set; }
     public bool Active { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; }
 }
