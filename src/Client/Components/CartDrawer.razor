@@ -1,3 +1,4 @@
+@implements IDisposable
 @inject CartService Cart
 @inject OrderService OrderSvc
 @inject NavigationManager Nav
@@ -113,6 +114,18 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private bool _placing;
+
+    protected override void OnInitialized()
+    {
+        Cart.OnChange += OnCartChanged;
+    }
+
+    private void OnCartChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Cart.OnChange -= OnCartChanged;
+    }
 
     private async Task Close() => await OnClose.InvokeAsync();
 
