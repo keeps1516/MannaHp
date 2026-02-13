@@ -10,4 +10,6 @@ public class Ingredient
     public decimal CostPerUnit { get; set; }
     public decimal StockQuantity { get; set; }
     public decimal LowStockThreshold { get; set; }
+    public bool Active { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
