@@ -19,5 +19,6 @@ app.MapMenuItemEndpoints();
 app.MapVariantEndpoints();
 app.MapAvailableIngredientEndpoints();
 app.MapRecipeIngredientEndpoints();
+app.MapOrderEndpoints();
 
 app.Run();

@@ -1,4 +1,5 @@
 using MannaHp.Shared.Entities;
+using MannaHp.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace MannaHp.Server.Data;
@@ -14,7 +15,12 @@ public class MannaDbContext : DbContext
     public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
     public DbSet<MenuItemAvailableIngredient> MenuItemAvailableIngredients => Set<MenuItemAvailableIngredient>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+	public DbSet<Order> Orders => Set<Order>();
+	public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+	public DbSet<OrderItemIngredient> OrderItemIngredients => Set<OrderItemIngredient>();
+
+
+	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
@@ -119,5 +125,65 @@ public class MannaDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(a => a.IngredientId);
         });
-    }
+
+		// ── Order ──
+		modelBuilder.Entity<Order>(e =>
+		{
+			e.ToTable("orders");
+			e.HasKey(o => o.Id);
+			e.Property(o => o.UserId).HasMaxLength(450);
+			e.Property(o => o.Status).HasDefaultValue(OrderStatus.Received);
+			e.Property(o => o.PaymentStatus).HasDefaultValue(PaymentStatus.Pending);
+			e.Property(o => o.StripePaymentId).HasMaxLength(255);
+			e.Property(o => o.Subtotal).HasPrecision(10, 2);
+			e.Property(o => o.TaxRate).HasPrecision(5, 4);
+			e.Property(o => o.Tax).HasPrecision(10, 2);
+			e.Property(o => o.Total).HasPrecision(10, 2);
+			e.Property(o => o.Printed).HasDefaultValue(false);
+			e.Property(o => o.CreatedAt).HasDefaultValueSql("now()");
+			e.Property(o => o.UpdatedAt).HasDefaultValueSql("now()");
+		});
+
+		// ── OrderItem ──
+		modelBuilder.Entity<OrderItem>(e =>
+		{
+			e.ToTable("order_items");
+			e.HasKey(oi => oi.Id);
+			e.Property(oi => oi.Quantity).HasDefaultValue(1);
+			e.Property(oi => oi.UnitPrice).HasPrecision(10, 2);
+			e.Property(oi => oi.TotalPrice).HasPrecision(10, 2);
+
+			e.HasOne(oi => oi.Order)
+				.WithMany(o => o.Items)
+				.HasForeignKey(oi => oi.OrderId);
+
+			e.HasOne(oi => oi.MenuItem)
+				.WithMany()
+				.HasForeignKey(oi => oi.MenuItemId);
+
+			e.HasOne(oi => oi.Variant)
+				.WithMany()
+				.HasForeignKey(oi => oi.VariantId);
+		});
+
+		// ── OrderItemIngredient ──
+		modelBuilder.Entity<OrderItemIngredient>(e =>
+		{
+			e.ToTable("order_item_ingredients");
+			e.HasKey(oii => oii.Id);
+			e.Property(oii => oii.QuantityUsed).HasPrecision(10, 4);
+			e.Property(oii => oii.PriceCharged).HasPrecision(10, 2);
+
+			e.HasOne(oii => oii.OrderItem)
+				.WithMany(oi => oi.Ingredients)
+				.HasForeignKey(oii => oii.OrderItemId);
+
+			e.HasOne(oii => oii.Ingredient)
+				.WithMany()
+				.HasForeignKey(oii => oii.IngredientId);
+		});
+
+		// ── Seed Data ──
+		SeedData.Seed(modelBuilder);
+	}
 }
