@@ -115,3 +115,25 @@ export interface OrderItemIngredientDto {
   ingredientName: string;
   priceCharged: number;
 }
+
+// ── Auth ──
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  email: string;
+  displayName: string;
+  role: string;
+  expiresAt: string;
+}
+
+export interface UserDto {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+}

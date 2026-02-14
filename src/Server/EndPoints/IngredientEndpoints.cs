@@ -42,7 +42,8 @@ public static class IngredientEndpoints
                 new IngredientDto(ingredient.Id, ingredient.Name!, ingredient.Unit,
                     ingredient.CostPerUnit, ingredient.StockQuantity,
                     ingredient.LowStockThreshold, ingredient.Active));
-        }).AddEndpointFilter<ValidationFilter<CreateIngredientRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateIngredientRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateIngredientRequest req, MannaDbContext db) =>
         {
@@ -59,7 +60,8 @@ public static class IngredientEndpoints
             return Results.Ok(new IngredientDto(ingredient.Id, ingredient.Name!, ingredient.Unit,
                 ingredient.CostPerUnit, ingredient.StockQuantity,
                 ingredient.LowStockThreshold, ingredient.Active));
-        }).AddEndpointFilter<ValidationFilter<UpdateIngredientRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateIngredientRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapDelete("/{id:guid}", async (Guid id, MannaDbContext db) =>
         {
@@ -69,6 +71,6 @@ public static class IngredientEndpoints
             ingredient.Active = false;
             await db.SaveChangesAsync();
             return Results.NoContent();
-        });
+        }).RequireAuthorization("Owner");
     }
 }

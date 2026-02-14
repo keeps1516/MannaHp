@@ -126,7 +126,7 @@ public static class OrderEndpoints
             return Results.Ok(MapToDto(order));
         });
 
-        // GET active orders (kitchen display)
+        // GET active orders (kitchen display) — Staff only
         group.MapGet("/active", async (MannaDbContext db) =>
         {
             var orders = await db.Orders
@@ -138,9 +138,9 @@ public static class OrderEndpoints
                 .ToListAsync();
 
             return Results.Ok(orders.Select(MapToDto).ToList());
-        });
+        }).RequireAuthorization("Staff");
 
-        // PATCH status (kitchen staff)
+        // PATCH status (kitchen staff) — Staff only
         group.MapPatch("/{id:guid}/status", async (Guid id, UpdateOrderStatusRequest req, MannaDbContext db) =>
         {
             var order = await db.Orders.FindAsync(id);
@@ -151,7 +151,8 @@ public static class OrderEndpoints
             await db.SaveChangesAsync();
 
             return Results.Ok(new { order.Id, order.Status });
-        }).AddEndpointFilter<ValidationFilter<UpdateOrderStatusRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateOrderStatusRequest>>()
+          .RequireAuthorization("Staff");
     }
 
     private static OrderDto MapToDto(Order order) => new(

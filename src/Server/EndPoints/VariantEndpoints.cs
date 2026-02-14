@@ -43,7 +43,8 @@ public static class VariantEndpoints
             await db.SaveChangesAsync();
             return Results.Created($"/api/menu-items/{menuItemId}/variants/{variant.Id}",
                 new MenuItemVariantDto(variant.Id, variant.Name, variant.Price, variant.Sortorder, variant.Active));
-        }).AddEndpointFilter<ValidationFilter<CreateVariantRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateVariantRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapPut("/{variantId:guid}", async (Guid menuItemId, Guid variantId,
             UpdateVariantRequest req, MannaDbContext db) =>
@@ -59,7 +60,8 @@ public static class VariantEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(new MenuItemVariantDto(variant.Id, variant.Name, variant.Price,
                 variant.Sortorder, variant.Active));
-        }).AddEndpointFilter<ValidationFilter<UpdateVariantRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateVariantRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapDelete("/{variantId:guid}", async (Guid menuItemId, Guid variantId, MannaDbContext db) =>
         {
@@ -70,6 +72,6 @@ public static class VariantEndpoints
             variant.Active = false;
             await db.SaveChangesAsync();
             return Results.NoContent();
-        });
+        }).RequireAuthorization("Owner");
     }
 }

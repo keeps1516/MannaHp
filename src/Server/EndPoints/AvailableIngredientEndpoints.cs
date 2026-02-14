@@ -60,7 +60,8 @@ public static class AvailableIngredientEndpoints
                 new AvailableIngredientDto(available.Id, available.IngredientId, ingredient.Name!,
                     available.CustomerPrice, available.QuantityUsed, available.IsDefault,
                     available.GroupName!, available.SortOrder, available.Active, (int)ingredient.Unit));
-        }).AddEndpointFilter<ValidationFilter<CreateAvailableIngredientRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateAvailableIngredientRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapPut("/{availableId:guid}", async (Guid menuItemId, Guid availableId,
             UpdateAvailableIngredientRequest req, MannaDbContext db) =>
@@ -81,7 +82,8 @@ public static class AvailableIngredientEndpoints
                 available.Ingredient!.Name!, available.CustomerPrice, available.QuantityUsed,
                 available.IsDefault, available.GroupName!, available.SortOrder, available.Active,
                 (int)available.Ingredient!.Unit));
-        }).AddEndpointFilter<ValidationFilter<UpdateAvailableIngredientRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateAvailableIngredientRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapDelete("/{availableId:guid}", async (Guid menuItemId, Guid availableId, MannaDbContext db) =>
         {
@@ -92,6 +94,6 @@ public static class AvailableIngredientEndpoints
             available.Active = false;
             await db.SaveChangesAsync();
             return Results.NoContent();
-        });
+        }).RequireAuthorization("Owner");
     }
 }

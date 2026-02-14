@@ -35,7 +35,8 @@ public static class CategoryEndpoints
             await db.SaveChangesAsync();
             return Results.Created($"/api/categories/{category.Id}",
                 new CategoryDto(category.Id, category.Name, category.SortOrder, category.Active));
-        }).AddEndpointFilter<ValidationFilter<CreateCategoryRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateCategoryRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryRequest req, MannaDbContext db) =>
         {
@@ -47,7 +48,8 @@ public static class CategoryEndpoints
             category.Active = req.Active;
             await db.SaveChangesAsync();
             return Results.Ok(new CategoryDto(category.Id, category.Name, category.SortOrder, category.Active));
-        }).AddEndpointFilter<ValidationFilter<UpdateCategoryRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateCategoryRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapDelete("/{id:guid}", async (Guid id, MannaDbContext db) =>
         {
@@ -57,6 +59,6 @@ public static class CategoryEndpoints
             category.Active = false;
             await db.SaveChangesAsync();
             return Results.NoContent();
-        });
+        }).RequireAuthorization("Owner");
     }
 }

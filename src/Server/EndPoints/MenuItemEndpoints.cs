@@ -81,7 +81,8 @@ public static class MenuItemEndpoints
                     menuItem.Description, menuItem.ImageUrl, menuItem.ImageApproximate,
                     menuItem.IsCustomizable, menuItem.Active, menuItem.SortOrder, [],
                     menuItem.IsCustomizable ? [] : null));
-        }).AddEndpointFilter<ValidationFilter<CreateMenuItemRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateMenuItemRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateMenuItemRequest req, MannaDbContext db) =>
         {
@@ -108,7 +109,8 @@ public static class MenuItemEndpoints
                 menuItem.Description, menuItem.ImageUrl, menuItem.ImageApproximate,
                 menuItem.IsCustomizable, menuItem.Active, menuItem.SortOrder, [],
                 menuItem.IsCustomizable ? [] : null));
-        }).AddEndpointFilter<ValidationFilter<UpdateMenuItemRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateMenuItemRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapDelete("/{id:guid}", async (Guid id, MannaDbContext db) =>
         {
@@ -118,6 +120,6 @@ public static class MenuItemEndpoints
             menuItem.Active = false;
             await db.SaveChangesAsync();
             return Results.NoContent();
-        });
+        }).RequireAuthorization("Owner");
     }
 }

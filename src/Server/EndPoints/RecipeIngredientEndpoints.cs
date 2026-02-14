@@ -55,7 +55,8 @@ public static class RecipeIngredientEndpoints
             return Results.Created(
                 $"/api/menu-items/{menuItemId}/variants/{variantId}/recipe-ingredients/{recipe.Id}",
                 new RecipeIngredientDto(recipe.Id, recipe.IngredientId, ingredient.Name!, recipe.Quantity));
-        }).AddEndpointFilter<ValidationFilter<CreateRecipeIngredientRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateRecipeIngredientRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapPut("/{recipeId:guid}", async (Guid menuItemId, Guid variantId, Guid recipeId,
             UpdateRecipeIngredientRequest req, MannaDbContext db) =>
@@ -73,7 +74,8 @@ public static class RecipeIngredientEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(new RecipeIngredientDto(recipe.Id, recipe.IngredientId,
                 recipe.Ingredient!.Name!, recipe.Quantity));
-        }).AddEndpointFilter<ValidationFilter<UpdateRecipeIngredientRequest>>();
+        }).AddEndpointFilter<ValidationFilter<UpdateRecipeIngredientRequest>>()
+          .RequireAuthorization("Owner");
 
         group.MapDelete("/{recipeId:guid}", async (Guid menuItemId, Guid variantId, Guid recipeId,
             MannaDbContext db) =>
@@ -89,6 +91,6 @@ public static class RecipeIngredientEndpoints
             db.RecipeIngredients.Remove(recipe);
             await db.SaveChangesAsync();
             return Results.NoContent();
-        });
+        }).RequireAuthorization("Owner");
     }
 }

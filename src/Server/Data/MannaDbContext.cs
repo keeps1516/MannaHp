@@ -1,12 +1,21 @@
 using MannaHp.Shared.Entities;
 using MannaHp.Shared.Enums;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace MannaHp.Server.Data;
 
-public class MannaDbContext : DbContext
+public class MannaDbContext : IdentityDbContext<AppUser>
 {
     public MannaDbContext(DbContextOptions<MannaDbContext> options) : base(options) { }
+
+	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+	{
+		base.OnConfiguring(optionsBuilder);
+		optionsBuilder.ConfigureWarnings(w =>
+			w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+	}
 
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
@@ -24,6 +33,35 @@ public class MannaDbContext : DbContext
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+		// ── Identity Tables (snake_case) ──
+		modelBuilder.Entity<AppUser>(e =>
+		{
+			e.ToTable("users");
+			e.Property(u => u.CreatedAt).HasDefaultValueSql("now()");
+		});
+		modelBuilder.Entity<IdentityRole>(e => e.ToTable("roles"));
+		modelBuilder.Entity<IdentityUserRole<string>>(e => e.ToTable("user_roles"));
+		modelBuilder.Entity<IdentityUserClaim<string>>(e => e.ToTable("user_claims"));
+		modelBuilder.Entity<IdentityUserLogin<string>>(e => e.ToTable("user_logins"));
+		modelBuilder.Entity<IdentityUserToken<string>>(e => e.ToTable("user_tokens"));
+		modelBuilder.Entity<IdentityRoleClaim<string>>(e => e.ToTable("role_claims"));
+
+		// ── Seed Roles ──
+		const string ownerRoleId = "role-owner";
+		const string staffRoleId = "role-staff";
+		const string customerRoleId = "role-customer";
+
+		modelBuilder.Entity<IdentityRole>().HasData(
+			new IdentityRole { Id = ownerRoleId, Name = "Owner", NormalizedName = "OWNER" },
+			new IdentityRole { Id = staffRoleId, Name = "Staff", NormalizedName = "STAFF" },
+			new IdentityRole { Id = customerRoleId, Name = "Customer", NormalizedName = "CUSTOMER" }
+		);
+
+		// ── Seed Owner Account ──
+		// Password "MannaOwner123!" — seeded at startup if not present.
+		// We don't seed the user via HasData (password hash is non-deterministic).
+		// Instead, we seed via a runtime initializer in Program.cs.
 
         // ── Category ──
         modelBuilder.Entity<Category>(e =>
