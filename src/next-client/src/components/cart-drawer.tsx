@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Trash2 } from "lucide-react";
 import {
@@ -28,6 +28,17 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
   const cart = useCart();
   const router = useRouter();
   const [placing, setPlacing] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const pendingOrderIdRef = useRef<string | null>(null);
+
+  const finishOrder = useCallback(() => {
+    setShowVideo(false);
+    if (pendingOrderIdRef.current) {
+      router.push(`/order/${pendingOrderIdRef.current}`);
+      pendingOrderIdRef.current = null;
+    }
+  }, [router]);
 
   async function handlePlaceOrder() {
     if (cart.items.length === 0) return;
@@ -48,7 +59,8 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
       });
       cart.clear();
       onOpenChange(false);
-      router.push(`/order/${order.id}`);
+      pendingOrderIdRef.current = order.id;
+      setShowVideo(true);
     } catch {
       toast.error("Failed to place order. Please try again.");
     } finally {
@@ -146,6 +158,22 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
           </>
         )}
       </SheetContent>
+
+      {showVideo && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black flex items-center justify-center cursor-pointer"
+          onClick={finishOrder}
+        >
+          <video
+            ref={videoRef}
+            src="/all-hearts-restored.mp4"
+            autoPlay
+            playsInline
+            onEnded={finishOrder}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
     </Sheet>
   );
 }
