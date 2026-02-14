@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CartDrawer } from "@/components/cart-drawer";
@@ -14,7 +15,7 @@ export function Header() {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-[#0a1628] border-b border-[#1e3a5f] flex items-center justify-between px-4 shadow-lg shadow-black/30">
-        <div className="flex items-center gap-2.5">
+        <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
           <Image
             src="/logo.png"
             alt="Manna + HP"
@@ -30,7 +31,7 @@ export function Header() {
               Boardgame Cafe &amp; Burrito Bowls
             </p>
           </div>
-        </div>
+        </Link>
         <Button
           variant="ghost"
           className="text-[#00e5ff] hover:bg-[#00e5ff]/10 gap-1.5 px-3 border border-[#1e3a5f] rounded-full"

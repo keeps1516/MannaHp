@@ -120,7 +120,7 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
       {/* Back button */}
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-[#7a9bb5] hover:text-[#00e5ff] transition-colors text-sm"
+        className="sticky top-16 z-40 flex items-center gap-1.5 text-[#7a9bb5] hover:text-[#00e5ff] transition-colors text-sm bg-[#0f1f35]/95 backdrop-blur-sm py-2 -mx-4 px-4 border-b border-[#1e3a5f]/50"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
