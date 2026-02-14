@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Minus, Plus } from "lucide-react";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { Minus, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuantitySelector } from "@/components/quantity-selector";
@@ -37,6 +37,27 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
 
   const [bowlName, setBowlName] = useState("");
   const [bowlQty, setBowlQty] = useState(1);
+  const [showOneOfEverythingGif, setShowOneOfEverythingGif] = useState(false);
+  const gifTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleOneOfEverything = useCallback(() => {
+    // Increment every active ingredient by 1 (respecting max of 10)
+    setQuantities((prev) => {
+      const next = { ...prev };
+      for (const ing of activeIngredients) {
+        const current = next[ing.id] ?? 0;
+        next[ing.id] = Math.min(10, current + 1);
+      }
+      return next;
+    });
+
+    // Show GIF overlay for 1.2 seconds
+    setShowOneOfEverythingGif(true);
+    if (gifTimeoutRef.current) clearTimeout(gifTimeoutRef.current);
+    gifTimeoutRef.current = setTimeout(() => {
+      setShowOneOfEverythingGif(false);
+    }, 2600);
+  }, [activeIngredients]);
 
   const grouped = useMemo(() => {
     const groups: Record<string, AvailableIngredientDto[]> = {};
@@ -118,6 +139,34 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
         <p className="text-[#7a9bb5]">
           Choose any items you&apos;d like &ndash; no rules, just delicious!
         </p>
+      </div>
+
+      {/* One Of Everything */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={handleOneOfEverything}
+          className="relative overflow-hidden rounded-xl border border-[#1e3a5f] bg-[#163a50] hover:border-[#00e5ff]/50 hover:bg-[#00e5ff]/5 transition-all duration-200 px-6 py-3 group"
+        >
+          {showOneOfEverythingGif ? (
+            <span className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/one-of-everything.gif"
+                alt="Party!"
+                className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-80"
+              />
+              <span className="relative z-10 text-sm font-bold text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+                One of everything!!
+              </span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-2 text-sm font-semibold text-[#00e5ff]">
+              <Sparkles className="h-4 w-4" />
+              One Of Everything
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Bowl Name */}
