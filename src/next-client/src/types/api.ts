@@ -30,6 +30,7 @@ export interface MenuItemDto {
   categoryId: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   isCustomizable: boolean;
   active: boolean;
   sortOrder: number;

@@ -208,38 +208,38 @@ public static class SeedData
     private static void SeedMenuItems(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<MenuItem>().HasData(
-            Mi(MiBowl, CatBowls, "Burrito Bowl", "Build your own bowl", true, 1),
-            Mi(MiDrip, CatDrinks, "Drip Coffee", "Fresh batch brew", false, 1),
-            Mi(MiAuLait, CatDrinks, "Café au Lait", "½ drip + ½ steamed milk", false, 2),
-            Mi(MiEspresso, CatDrinks, "Espresso", "Shot of espresso", false, 3),
-            Mi(MiAmericano, CatDrinks, "Americano", "Espresso + hot water", false, 4),
-            Mi(MiCaraMac, CatDrinks, "Caramel Macchiato", "Layered caramel espresso drink", false, 5),
-            Mi(MiCortado, CatDrinks, "Cortado", "1:1 espresso : steamed milk", false, 6),
-            Mi(MiCappuccino, CatDrinks, "Cappuccino", "Espresso + airy foam", false, 7),
-            Mi(MiLatte, CatDrinks, "Latte", "Espresso + steamed milk", false, 8),
-            Mi(MiMocha, CatDrinks, "Mocha", "Latte + chocolate syrup", false, 9),
-            Mi(MiWhtMocha, CatDrinks, "White Mocha", "Latte + white chocolate syrup", false, 10),
-            Mi(MiFlvLatte, CatDrinks, "Flavored Latte", "Latte + flavored syrup", false, 11),
-            Mi(MiCaraLatte, CatDrinks, "Caramel Latte", "Latte + caramel syrup", false, 12),
-            Mi(MiIcedCoffee, CatDrinks, "Iced Coffee", "Chilled drip over ice", false, 13),
-            Mi(MiColdBrew, CatDrinks, "Cold Brew", "16-18 hr brew, over ice", false, 14),
-            Mi(MiIcedLatte, CatDrinks, "Iced Latte", "Espresso + milk over ice", false, 15),
-            Mi(MiAffogato, CatDrinks, "Affogato", "Espresso over vanilla ice cream", false, 16),
-            Mi(MiBlendMocha, CatDrinks, "Blended Mocha", "Espresso, milk, chocolate, ice", false, 17),
-            Mi(MiBlendCaramel, CatDrinks, "Blended Caramel", "Espresso, milk, caramel, ice", false, 18),
-            Mi(MiSmoothie, CatDrinks, "Smoothie", "Smoothie base + fruit flavor", false, 19),
-            Mi(MiHotChoc, CatDrinks, "Hot Chocolate", "Steamed milk + chocolate", false, 20),
-            Mi(MiSteamer, CatDrinks, "Steamer", "Steamed milk + syrup", false, 21),
-            Mi(MiTea, CatDrinks, "Tea", "Premium sachet or pot", false, 22),
-            Mi(MiChaiLatte, CatDrinks, "Chai Latte", "Chai + steamed milk", false, 23),
-            Mi(MiPumpkin, CatSeasonal, "Pumpkin Spice Latte", "Latte + pumpkin spice syrup + whipped cream", false, 1),
-            Mi(MiMaple, CatSeasonal, "Maple Brown Sugar Latte", "Latte + maple brown sugar syrup + whipped cream", false, 2),
-            Mi(MiMarshmallow, CatSeasonal, "Toasted Marshmallow Mocha", "Mocha + toasted marshmallow syrup", false, 3),
-            Mi(MiPepMocha, CatSeasonal, "Peppermint Mocha", "Mocha + peppermint syrup + whipped cream", false, 4),
-            Mi(MiGingerbread, CatSeasonal, "Gingerbread Latte", "Latte + gingerbread syrup", false, 5),
-            Mi(MiAppleCider, CatSeasonal, "Hot Apple Cider", "Steamed cider + cinnamon", false, 6),
-            Mi(MiChips, CatSides, "Side of Chips", null, false, 1),
-            Mi(MiChipsQueso, CatSides, "Chips & Salsa with 13oz Large Queso", null, false, 2),
+            Mi(MiBowl, CatBowls, "Burrito Bowl", "Build your own bowl", true, 1, "/menu/burrito-bowl.jpg"),
+            Mi(MiDrip, CatDrinks, "Drip Coffee", "Fresh batch brew", false, 1, "/menu/drip-coffee.jpg"),
+            Mi(MiAuLait, CatDrinks, "Café au Lait", "½ drip + ½ steamed milk", false, 2, "/menu/cafe-au-lait.jpg"),
+            Mi(MiEspresso, CatDrinks, "Espresso", "Shot of espresso", false, 3, "/menu/espresso.jpg"),
+            Mi(MiAmericano, CatDrinks, "Americano", "Espresso + hot water", false, 4, "/menu/americano.jpg"),
+            Mi(MiCaraMac, CatDrinks, "Caramel Macchiato", "Layered caramel espresso drink", false, 5, "/menu/caramel-macchiato.jpg"),
+            Mi(MiCortado, CatDrinks, "Cortado", "1:1 espresso : steamed milk", false, 6, "/menu/cortado.jpg"),
+            Mi(MiCappuccino, CatDrinks, "Cappuccino", "Espresso + airy foam", false, 7, "/menu/cappuccino.jpg"),
+            Mi(MiLatte, CatDrinks, "Latte", "Espresso + steamed milk", false, 8, "/menu/latte.jpg"),
+            Mi(MiMocha, CatDrinks, "Mocha", "Latte + chocolate syrup", false, 9, "/menu/mocha.jpg"),
+            Mi(MiWhtMocha, CatDrinks, "White Mocha", "Latte + white chocolate syrup", false, 10, "/menu/white-mocha.jpg"),
+            Mi(MiFlvLatte, CatDrinks, "Flavored Latte", "Latte + flavored syrup", false, 11, "/menu/flavored-latte.jpg"),
+            Mi(MiCaraLatte, CatDrinks, "Caramel Latte", "Latte + caramel syrup", false, 12, "/menu/caramel-latte.jpg"),
+            Mi(MiIcedCoffee, CatDrinks, "Iced Coffee", "Chilled drip over ice", false, 13, "/menu/iced-coffee.jpg"),
+            Mi(MiColdBrew, CatDrinks, "Cold Brew", "16-18 hr brew, over ice", false, 14, "/menu/cold-brew.jpg"),
+            Mi(MiIcedLatte, CatDrinks, "Iced Latte", "Espresso + milk over ice", false, 15, "/menu/iced-latte.jpg"),
+            Mi(MiAffogato, CatDrinks, "Affogato", "Espresso over vanilla ice cream", false, 16, "/menu/affogato.jpg"),
+            Mi(MiBlendMocha, CatDrinks, "Blended Mocha", "Espresso, milk, chocolate, ice", false, 17, "/menu/blended-mocha.jpg"),
+            Mi(MiBlendCaramel, CatDrinks, "Blended Caramel", "Espresso, milk, caramel, ice", false, 18, "/menu/blended-caramel.jpg"),
+            Mi(MiSmoothie, CatDrinks, "Smoothie", "Smoothie base + fruit flavor", false, 19, "/menu/smoothie.jpg"),
+            Mi(MiHotChoc, CatDrinks, "Hot Chocolate", "Steamed milk + chocolate", false, 20, "/menu/hot-chocolate.jpg"),
+            Mi(MiSteamer, CatDrinks, "Steamer", "Steamed milk + syrup", false, 21, "/menu/steamer.jpg"),
+            Mi(MiTea, CatDrinks, "Tea", "Premium sachet or pot", false, 22, "/menu/tea.jpg"),
+            Mi(MiChaiLatte, CatDrinks, "Chai Latte", "Chai + steamed milk", false, 23, "/menu/chai-latte.jpg"),
+            Mi(MiPumpkin, CatSeasonal, "Pumpkin Spice Latte", "Latte + pumpkin spice syrup + whipped cream", false, 1, "/menu/pumpkin-spice-latte.jpg"),
+            Mi(MiMaple, CatSeasonal, "Maple Brown Sugar Latte", "Latte + maple brown sugar syrup + whipped cream", false, 2, "/menu/maple-brown-sugar-latte.jpg"),
+            Mi(MiMarshmallow, CatSeasonal, "Toasted Marshmallow Mocha", "Mocha + toasted marshmallow syrup", false, 3, "/menu/toasted-marshmallow-mocha.jpg"),
+            Mi(MiPepMocha, CatSeasonal, "Peppermint Mocha", "Mocha + peppermint syrup + whipped cream", false, 4, "/menu/peppermint-mocha.jpg"),
+            Mi(MiGingerbread, CatSeasonal, "Gingerbread Latte", "Latte + gingerbread syrup", false, 5, "/menu/gingerbread-latte.jpg"),
+            Mi(MiAppleCider, CatSeasonal, "Hot Apple Cider", "Steamed cider + cinnamon", false, 6, "/menu/apple-cider.jpg"),
+            Mi(MiChips, CatSides, "Side of Chips", null, false, 1, "/menu/chips.jpg"),
+            Mi(MiChipsQueso, CatSides, "Chips & Salsa with 13oz Large Queso", null, false, 2, "/menu/chips-queso.jpg"),
             Mi(MiFlvShot, CatAddons, "Flavor Shot", null, false, 1),
             Mi(MiEspShot, CatAddons, "Espresso Shot", null, false, 2),
             Mi(MiWhipCream, CatAddons, "Whipped Cream", null, false, 3),
@@ -502,10 +502,10 @@ public static class SeedData
         StockQuantity = stock, LowStockThreshold = lowStock, Active = true
     };
 
-    private static MenuItem Mi(Guid id, Guid categoryId, string name, string? desc, bool customizable, int sort) => new()
+    private static MenuItem Mi(Guid id, Guid categoryId, string name, string? desc, bool customizable, int sort, string? imageUrl = null) => new()
     {
         Id = id, Categoryid = categoryId, Name = name, Description = desc,
-        IsCustomizable = customizable, Active = true, SortOrder = sort
+        ImageUrl = imageUrl, IsCustomizable = customizable, Active = true, SortOrder = sort
     };
 
     private static MenuItemVariant Var(Guid id, Guid menuItemId, string name, decimal price, int sort) => new()

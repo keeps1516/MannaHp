@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,20 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
           <p className="text-[#7a9bb5] mt-1">{menuItem.description}</p>
         )}
       </div>
+
+      {/* Hero image */}
+      {menuItem.imageUrl && (
+        <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#163a50]">
+          <Image
+            src={menuItem.imageUrl}
+            alt={menuItem.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 768px"
+            priority
+          />
+        </div>
+      )}
 
       {/* Variant selector */}
       {activeVariants.length > 0 && (

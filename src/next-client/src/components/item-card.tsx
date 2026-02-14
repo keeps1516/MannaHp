@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { MenuItemDto } from "@/types/api";
@@ -32,7 +33,19 @@ export function ItemCard({ item }: ItemCardProps) {
   return (
     <Link href={`/item/${item.id}`}>
       <div className="group relative rounded-xl border border-[#1e3a5f] bg-[#163a50] p-4 transition-all duration-200 hover:border-[#00e5ff]/50 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)] cursor-pointer">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {/* Thumbnail */}
+          {item.imageUrl && (
+            <div className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-[#0f1f35]">
+              <Image
+                src={item.imageUrl}
+                alt={item.name}
+                fill
+                className="object-cover"
+                sizes="56px"
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white group-hover:text-[#00e5ff] transition-colors">
               {item.name}
