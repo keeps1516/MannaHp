@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Trash2, X } from "lucide-react";
+import { ShoppingCart, Trash2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -60,17 +60,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex flex-col w-full sm:max-w-md p-0 bg-[#0f1f35] border-l border-[#1e3a5f] text-white">
         <SheetHeader className="px-6 py-4 border-b border-[#1e3a5f]">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-white">Your Order</SheetTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-[#7a9bb5] hover:text-white hover:bg-[#1a3550]"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <SheetTitle className="text-white">Your Order</SheetTitle>
         </SheetHeader>
 
         {cart.items.length === 0 ? (
