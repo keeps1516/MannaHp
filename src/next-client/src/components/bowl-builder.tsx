@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { QuantitySelector } from "@/components/quantity-selector";
 import { useCart } from "@/store/cart-context";
 import { getIngredientEmoji } from "@/lib/ingredient-emoji";
 import type { MenuItemDto, AvailableIngredientDto } from "@/types/api";
@@ -34,6 +35,7 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
   });
 
   const [bowlName, setBowlName] = useState("");
+  const [bowlQty, setBowlQty] = useState(1);
 
   const grouped = useMemo(() => {
     const groups: Record<string, AvailableIngredientDto[]> = {};
@@ -84,13 +86,15 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
       menuItem,
       variant: null,
       selectedIngredients: selected,
-      quantity: 1,
+      quantity: bowlQty,
       notes: bowlName.trim() || null,
     });
+
+    const qtyLabel = bowlQty > 1 ? ` x${bowlQty}` : "";
     toast.success(
       bowlName.trim()
-        ? `"${bowlName.trim()}" added to cart`
-        : `${menuItem.name} added to cart`
+        ? `"${bowlName.trim()}"${qtyLabel} added to cart`
+        : `${menuItem.name}${qtyLabel} added to cart`
     );
 
     const reset: Record<string, number> = {};
@@ -99,6 +103,7 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
     }
     setQuantities(reset);
     setBowlName("");
+    setBowlQty(1);
     onItemAdded();
   }
 
@@ -197,17 +202,25 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
           <div>
             <p className="text-sm text-[#7a9bb5]">Bowl Total</p>
             <p className="text-2xl font-bold text-[#00e5ff]">
-              ${runningTotal.toFixed(2)}
+              ${(runningTotal * bowlQty).toFixed(2)}
             </p>
+            {bowlQty > 1 && (
+              <p className="text-xs text-[#4a6a85]">
+                ${runningTotal.toFixed(2)} each
+              </p>
+            )}
           </div>
-          <Button
-            size="lg"
-            className="px-8 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
-            onClick={handleAddToCart}
-            disabled={!hasSelection}
-          >
-            Add to Cart
-          </Button>
+          <div className="flex items-center gap-3">
+            <QuantitySelector value={bowlQty} onChange={setBowlQty} />
+            <Button
+              size="lg"
+              className="px-8 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
+              onClick={handleAddToCart}
+              disabled={!hasSelection}
+            >
+              Add to Cart
+            </Button>
+          </div>
         </div>
       </div>
     </div>
