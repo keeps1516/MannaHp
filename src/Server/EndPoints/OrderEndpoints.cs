@@ -64,23 +64,30 @@ public static class OrderEndpoints
                 }
 
                 // Step 2: If ingredients are selected, look them up and add their prices
+                // Note: duplicates are intentional — e.g. 2x rice sends the same ID twice
                 if (itemReq.SelectedIngredientIds?.Count > 0)
                 {
+                    var uniqueIds = itemReq.SelectedIngredientIds.Distinct().ToList();
                     var availableIngredients = await db.MenuItemAvailableIngredients
                         .Include(a => a.Ingredient)
                         .Where(a => a.MenuItemId == itemReq.MenuItemId
-                            && itemReq.SelectedIngredientIds.Contains(a.Id)
+                            && uniqueIds.Contains(a.Id)
                             && a.Active)
                         .ToListAsync();
 
-                    if (availableIngredients.Count != itemReq.SelectedIngredientIds.Count)
+                    if (availableIngredients.Count != uniqueIds.Count)
                         return Results.ValidationProblem(new Dictionary<string, string[]>
                         {
                             ["SelectedIngredientIds"] = ["One or more selected ingredients are invalid"]
                         });
 
-                    foreach (var avail in availableIngredients)
+                    // Build a lookup for quick access
+                    var ingredientLookup = availableIngredients.ToDictionary(a => a.Id);
+
+                    // Create one OrderItemIngredient per occurrence (handles qty > 1 of same ingredient)
+                    foreach (var selectedId in itemReq.SelectedIngredientIds)
                     {
+                        if (!ingredientLookup.TryGetValue(selectedId, out var avail)) continue;
                         orderItem.Ingredients.Add(new OrderItemIngredient
                         {
                             IngredientId = avail.IngredientId,
@@ -89,7 +96,10 @@ public static class OrderEndpoints
                         });
                     }
 
-                    unitPrice += availableIngredients.Sum(a => a.CustomerPrice);
+                    // Total price = sum across ALL occurrences (not just unique)
+                    unitPrice += itemReq.SelectedIngredientIds
+                        .Where(id => ingredientLookup.ContainsKey(id))
+                        .Sum(id => ingredientLookup[id].CustomerPrice);
                 }
 
                 // Validate: must have at least a variant or ingredients

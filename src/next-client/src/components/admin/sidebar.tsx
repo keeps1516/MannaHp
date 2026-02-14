@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShoppingCart,
+  ClipboardList,
   UtensilsCrossed,
   Wheat,
   Settings,
@@ -21,6 +22,7 @@ import { VisuallyHidden } from "radix-ui";
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { href: "/admin/submit-order", label: "New Order", icon: ClipboardList },
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/admin/ingredients", label: "Ingredients", icon: Wheat },
   { href: "/admin/settings", label: "Settings", icon: Settings },
