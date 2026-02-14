@@ -4,6 +4,7 @@ using MannaHp.Client.Services;
 using MannaHp.Server.Components;
 using MannaHp.Server.Data;
 using MannaHp.Server.Endpoints;
+using MannaHp.Server.Hubs;
 using MannaHp.Server.Services;
 using MannaHp.Shared.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -82,6 +83,9 @@ builder.Services.AddAuthorizationBuilder()
 
 builder.Services.AddSingleton<TokenService>();
 
+// SignalR for real-time order updates
+builder.Services.AddSignalR();
+
 // Client services (needed during server-side prerendering)
 builder.Services.AddScoped<MenuService>();
 builder.Services.AddScoped<CartService>();
@@ -138,6 +142,9 @@ app.MapVariantEndpoints();
 app.MapAvailableIngredientEndpoints();
 app.MapRecipeIngredientEndpoints();
 app.MapOrderEndpoints();
+
+// SignalR hubs
+app.MapHub<OrderHub>("/hubs/orders");
 
 // Blazor
 app.MapRazorComponents<App>()

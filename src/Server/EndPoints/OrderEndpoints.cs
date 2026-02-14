@@ -1,8 +1,10 @@
 using MannaHp.Server.Data;
 using MannaHp.Server.Filters;
+using MannaHp.Server.Hubs;
 using MannaHp.Shared.DTOs;
 using MannaHp.Shared.Entities;
 using MannaHp.Shared.Enums;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace MannaHp.Server.Endpoints;
@@ -14,7 +16,8 @@ public static class OrderEndpoints
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
         // POST — place an order
-        group.MapPost("/", async (CreateOrderRequest req, MannaDbContext db) =>
+        group.MapPost("/", async (CreateOrderRequest req, MannaDbContext db,
+            IHubContext<OrderHub> hub) =>
         {
             var taxRate = 0.0825m; // TODO: pull from app_settings table
 
@@ -110,7 +113,19 @@ public static class OrderEndpoints
             db.Orders.Add(order);
             await db.SaveChangesAsync();
 
-            return Results.Created($"/api/orders/{order.Id}", MapToDto(order));
+            // Re-fetch with navigation properties for the DTO
+            var saved = await db.Orders
+                .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
+                .Include(o => o.Items).ThenInclude(oi => oi.Variant)
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .FirstAsync(o => o.Id == order.Id);
+
+            var dto = MapToDto(saved);
+
+            // Broadcast to kitchen via SignalR
+            await hub.Clients.Group("kitchen").SendAsync("OrderCreated", dto);
+
+            return Results.Created($"/api/orders/{order.Id}", dto);
         }).AddEndpointFilter<ValidationFilter<CreateOrderRequest>>();
 
         // GET by id
@@ -141,7 +156,8 @@ public static class OrderEndpoints
         }).RequireAuthorization("Staff");
 
         // PATCH status (kitchen staff) — Staff only
-        group.MapPatch("/{id:guid}/status", async (Guid id, UpdateOrderStatusRequest req, MannaDbContext db) =>
+        group.MapPatch("/{id:guid}/status", async (Guid id, UpdateOrderStatusRequest req,
+            MannaDbContext db, IHubContext<OrderHub> hub) =>
         {
             var order = await db.Orders.FindAsync(id);
             if (order is null) return Results.NotFound();
@@ -150,7 +166,13 @@ public static class OrderEndpoints
             order.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync();
 
-            return Results.Ok(new { order.Id, order.Status });
+            var update = new { order.Id, order.Status };
+
+            // Broadcast status change to kitchen + individual order watchers
+            await hub.Clients.Group("kitchen").SendAsync("OrderStatusChanged", update);
+            await hub.Clients.Group($"order-{id}").SendAsync("OrderStatusChanged", update);
+
+            return Results.Ok(update);
         }).AddEndpointFilter<ValidationFilter<UpdateOrderStatusRequest>>()
           .RequireAuthorization("Staff");
     }
