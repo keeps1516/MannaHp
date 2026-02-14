@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { Minus, Plus, Sparkles } from "lucide-react";
+import { Minus, Plus, Sparkles, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QuantitySelector } from "@/components/quantity-selector";
@@ -58,6 +58,24 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
       setShowOneOfEverythingGif(false);
     }, 2600);
   }, [activeIngredients]);
+
+  const simpleBowlIngredients = useMemo(
+    () => new Set(["jasmine rice", "beans", "ground beef", "sausage queso", "fresh salsa", "shredded cheese"]),
+    []
+  );
+
+  const handleSimpleBowl = useCallback(() => {
+    setQuantities((prev) => {
+      const next = { ...prev };
+      for (const ing of activeIngredients) {
+        if (simpleBowlIngredients.has(ing.ingredientName.toLowerCase())) {
+          const current = next[ing.id] ?? 0;
+          next[ing.id] = Math.min(10, current + 1);
+        }
+      }
+      return next;
+    });
+  }, [activeIngredients, simpleBowlIngredients]);
 
   const grouped = useMemo(() => {
     const groups: Record<string, AvailableIngredientDto[]> = {};
@@ -141,8 +159,18 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
         </p>
       </div>
 
-      {/* One Of Everything */}
-      <div className="flex justify-center">
+      {/* Quick-start buttons */}
+      <div className="flex justify-center gap-3">
+        <button
+          type="button"
+          onClick={handleSimpleBowl}
+          className="rounded-xl border border-[#1e3a5f] bg-[#163a50] hover:border-[#00e5ff]/50 hover:bg-[#00e5ff]/5 transition-all duration-200 px-6 py-3"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-[#00e5ff]">
+            <UtensilsCrossed className="h-4 w-4" />
+            Simple Bowl
+          </span>
+        </button>
         <button
           type="button"
           onClick={handleOneOfEverything}
