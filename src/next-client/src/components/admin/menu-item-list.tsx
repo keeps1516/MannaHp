@@ -279,18 +279,16 @@ export function MenuItemList({ categories }: MenuItemListProps) {
                               onRefresh={() => refreshItem(item.id)}
                             />
 
-                            {/* Available Ingredients (only for customizable items) */}
-                            {item.isCustomizable && (
-                              <div className="border-t border-white/10 pt-4">
-                                <AvailableIngredientSection
-                                  menuItemId={item.id}
-                                  availableIngredients={
-                                    item.availableIngredients ?? []
-                                  }
-                                  onRefresh={() => refreshItem(item.id)}
-                                />
-                              </div>
-                            )}
+                            {/* Available Ingredients (add-ons for all items) */}
+                            <div className="border-t border-white/10 pt-4">
+                              <AvailableIngredientSection
+                                menuItemId={item.id}
+                                availableIngredients={
+                                  item.availableIngredients ?? []
+                                }
+                                onRefresh={() => refreshItem(item.id)}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
