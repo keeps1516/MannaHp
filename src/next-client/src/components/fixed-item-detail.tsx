@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
@@ -62,6 +62,16 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
   });
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [showAddToCartGif, setShowAddToCartGif] = useState(false);
+  const gifTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const flashGif = useCallback(() => {
+    setShowAddToCartGif(true);
+    if (gifTimeoutRef.current) clearTimeout(gifTimeoutRef.current);
+    gifTimeoutRef.current = setTimeout(() => {
+      setShowAddToCartGif(false);
+    }, 1200);
+  }, []);
 
   const addOnTotal = useMemo(() => {
     let total = 0;
@@ -262,7 +272,10 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
                         <button
                           className="h-7 w-7 flex items-center justify-center rounded-full bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] transition-colors disabled:opacity-30"
                           disabled={qty >= 10}
-                          onClick={() => updateAddOnQty(addOn.id, 1)}
+                          onClick={() => {
+                            updateAddOnQty(addOn.id, 1);
+                            flashGif();
+                          }}
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </button>
@@ -311,14 +324,26 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
               </p>
             )}
           </div>
-          <Button
-            size="lg"
-            className="px-8 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
-            onClick={handleAddToCart}
-            disabled={!selectedVariant}
-          >
-            Add to Cart
-          </Button>
+          <div className="relative">
+            {showAddToCartGif && (
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 animate-in fade-in zoom-in-95 duration-750">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/more.gif"
+                  alt=""
+                  className="w-36 h-auto rounded-lg shadow-lg shadow-black/40 border border-[#1e3a5f]"
+                />
+              </div>
+            )}
+            <Button
+              size="lg"
+              className="px-8 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
+              onClick={handleAddToCart}
+              disabled={!selectedVariant}
+            >
+              Add to Cart
+            </Button>
+          </div>
         </div>
       </div>
     </div>
