@@ -10,6 +10,7 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5082";
 
 let connection: HubConnection | null = null;
+let connectId = 0; // monotonic counter to handle Strict Mode double-mount
 
 export function getOrderHubConnection(): HubConnection | null {
   return connection;
@@ -17,7 +18,8 @@ export function getOrderHubConnection(): HubConnection | null {
 
 /**
  * Connect to the OrderHub SignalR endpoint and join the kitchen group.
- * Returns the HubConnection instance.
+ * Handles React Strict Mode double-mount by tracking a connect generation ID.
+ * If disconnect is called before connect finishes, the stale connect is ignored.
  */
 export async function connectOrderHub(
   onOrderCreated: (order: OrderDto) => void,
@@ -25,46 +27,67 @@ export async function connectOrderHub(
   onReconnected?: () => void,
   onDisconnected?: () => void
 ): Promise<HubConnection> {
-  if (connection && connection.state !== HubConnectionState.Disconnected) {
-    return connection;
+  // Bump the generation so any in-flight connect from a previous mount is stale
+  const thisConnectId = ++connectId;
+
+  // If a previous connection exists, tear it down first
+  if (connection) {
+    try {
+      await connection.stop();
+    } catch {
+      // ignore
+    }
+    connection = null;
   }
 
-  connection = new HubConnectionBuilder()
+  const conn = new HubConnectionBuilder()
     .withUrl(`${API_BASE}/hubs/orders`)
     .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
     .configureLogging(LogLevel.Warning)
     .build();
 
-  connection.on("OrderCreated", onOrderCreated);
-  connection.on("OrderStatusChanged", onOrderStatusChanged);
+  conn.on("OrderCreated", onOrderCreated);
+  conn.on("OrderStatusChanged", onOrderStatusChanged);
 
-  connection.onreconnected(() => {
-    // Re-join the kitchen group after reconnect
-    connection?.invoke("JoinKitchen").catch(() => {});
+  conn.onreconnected(() => {
+    conn.invoke("JoinKitchen").catch(() => {});
     onReconnected?.();
   });
 
-  connection.onclose(() => {
+  conn.onclose(() => {
     onDisconnected?.();
   });
 
-  await connection.start();
-  await connection.invoke("JoinKitchen");
+  await conn.start();
 
-  return connection;
+  // If disconnect was called while we were starting, abort
+  if (thisConnectId !== connectId) {
+    await conn.stop();
+    throw new Error("Connection aborted (component unmounted)");
+  }
+
+  connection = conn;
+  await conn.invoke("JoinKitchen");
+
+  return conn;
 }
 
 /**
  * Disconnect from the OrderHub and clean up.
  */
 export async function disconnectOrderHub(): Promise<void> {
-  if (connection && connection.state !== HubConnectionState.Disconnected) {
+  // Bump generation to cancel any in-flight connect
+  connectId++;
+
+  const conn = connection;
+  connection = null;
+
+  if (conn && conn.state !== HubConnectionState.Disconnected) {
     try {
-      await connection.invoke("LeaveKitchen");
+      await conn.invoke("LeaveKitchen");
     } catch {
       // ignore if already disconnected
     }
-    await connection.stop();
+    await conn.stop();
   }
-  connection = null;
 }

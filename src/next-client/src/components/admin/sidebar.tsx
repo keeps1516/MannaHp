@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,9 +10,13 @@ import {
   Wheat,
   Settings,
   LogOut,
+  Menu,
 } from "lucide-react";
 import { useAuth } from "@/store/auth-context";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { VisuallyHidden } from "radix-ui";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -21,12 +26,13 @@ const navItems = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export function AdminSidebar() {
+/** Shared sidebar content used by both desktop sidebar and mobile drawer */
+function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-white/10 bg-[#0d1f3c]">
+    <div className="flex h-full flex-col">
       {/* Brand */}
       <div className="flex items-center gap-3 border-b border-white/10 px-6 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#00e5ff]/10 text-[#00e5ff] font-bold text-sm">
@@ -49,6 +55,7 @@ export function AdminSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
@@ -79,6 +86,56 @@ export function AdminSidebar() {
           Sign Out
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Desktop sidebar — hidden on mobile */
+export function AdminSidebar() {
+  return (
+    <aside className="hidden lg:flex h-screen w-64 flex-col border-r border-white/10 bg-[#0d1f3c]">
+      <SidebarContent />
     </aside>
+  );
+}
+
+/** Mobile top bar + drawer — hidden on desktop */
+export function AdminMobileNav() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      {/* Top bar */}
+      <div className="lg:hidden flex items-center justify-between border-b border-white/10 bg-[#0d1f3c] px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00e5ff]/10 text-[#00e5ff] font-bold text-xs">
+            M
+          </div>
+          <span className="font-semibold text-white text-sm">Manna + HP</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setOpen(true)}
+          className="text-[#7a9bb5] hover:text-white hover:bg-white/5"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* Drawer */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="w-64 p-0 bg-[#0d1f3c] border-white/10"
+        >
+          <VisuallyHidden.Root>
+            <SheetTitle>Navigation</SheetTitle>
+          </VisuallyHidden.Root>
+          <SidebarContent onNavClick={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
