@@ -113,6 +113,8 @@ export interface OrderItemDto {
 export interface OrderItemIngredientDto {
   ingredientId: string;
   ingredientName: string;
+  quantityUsed: number;
+  ingredientUnit: UnitOfMeasure;
   priceCharged: number;
 }
 

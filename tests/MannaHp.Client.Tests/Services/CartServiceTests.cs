@@ -14,7 +14,7 @@ public class CartServiceTests
     private static CartItem FixedItem(decimal price = 4.75m, int qty = 1) => new()
     {
         MenuItem = new MenuItemDto(Guid.NewGuid(), Guid.NewGuid(), "Latte", null,
-            IsCustomizable: false, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: null),
+            ImageUrl: null, ImageApproximate: false, IsCustomizable: false, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: null),
         Variant = new MenuItemVariantDto(Guid.NewGuid(), "12oz", price, SortOrder: 0, Active: true),
         Quantity = qty
     };
@@ -22,11 +22,11 @@ public class CartServiceTests
     private static CartItem CustomizableItem(decimal totalIngredientPrice = 7.50m, int qty = 1) => new()
     {
         MenuItem = new MenuItemDto(Guid.NewGuid(), Guid.NewGuid(), "Burrito Bowl", null,
-            IsCustomizable: true, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: []),
+            ImageUrl: null, ImageApproximate: false, IsCustomizable: true, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: []),
         SelectedIngredients =
         [
             new AvailableIngredientDto(Guid.NewGuid(), Guid.NewGuid(), "Chicken",
-                totalIngredientPrice, QuantityUsed: 8m, IsDefault: false, GroupName: "Proteins", SortOrder: 0, Active: true)
+                totalIngredientPrice, QuantityUsed: 8m, IsDefault: false, GroupName: "Proteins", SortOrder: 0, Active: true, IngredientUnit: 0)
         ],
         Quantity = qty
     };

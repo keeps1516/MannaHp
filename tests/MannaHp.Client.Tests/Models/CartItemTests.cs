@@ -9,11 +9,11 @@ public class CartItemTests
     // ── helpers ──────────────────────────────────────────────────────
 
     private static MenuItemDto CustomizableMenuItem(string name = "Burrito Bowl") =>
-        new(Guid.NewGuid(), Guid.NewGuid(), name, null, IsCustomizable: true, Active: true, SortOrder: 0,
+        new(Guid.NewGuid(), Guid.NewGuid(), name, null, ImageUrl: null, ImageApproximate: false, IsCustomizable: true, Active: true, SortOrder: 0,
             Variants: [], AvailableIngredients: []);
 
     private static MenuItemDto FixedMenuItem(string name = "Latte") =>
-        new(Guid.NewGuid(), Guid.NewGuid(), name, null, IsCustomizable: false, Active: true, SortOrder: 0,
+        new(Guid.NewGuid(), Guid.NewGuid(), name, null, ImageUrl: null, ImageApproximate: false, IsCustomizable: false, Active: true, SortOrder: 0,
             Variants: [], AvailableIngredients: null);
 
     private static MenuItemVariantDto Variant(string name = "12oz", decimal price = 4.75m) =>
@@ -21,7 +21,7 @@ public class CartItemTests
 
     private static AvailableIngredientDto Ingredient(string name = "Chicken", decimal price = 3.00m) =>
         new(Guid.NewGuid(), Guid.NewGuid(), name, price, QuantityUsed: 8m,
-            IsDefault: false, GroupName: "Proteins", SortOrder: 0, Active: true);
+            IsDefault: false, GroupName: "Proteins", SortOrder: 0, Active: true, IngredientUnit: 0);
 
     // ── UnitPrice ───────────────────────────────────────────────────
 

@@ -42,6 +42,8 @@ public record OrderItemDto(
 public record OrderItemIngredientDto(
 	Guid IngredientId,
 	string IngredientName,
+	decimal QuantityUsed,
+	UnitOfMeasure IngredientUnit,
 	decimal PriceCharged);
 
 // For status updates (kitchen staff)

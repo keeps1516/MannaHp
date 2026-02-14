@@ -200,6 +200,8 @@ public static class OrderEndpoints
                 ? oi.Ingredients.Select(oii => new OrderItemIngredientDto(
                     oii.IngredientId,
                     oii.Ingredient?.Name ?? "",
+                    oii.QuantityUsed,
+                    oii.Ingredient?.Unit ?? UnitOfMeasure.Each,
                     oii.PriceCharged)).ToList()
                 : null
         )).ToList()

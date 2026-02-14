@@ -154,33 +154,40 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Kanban columns */}
+      {/* Kanban columns – mobile: Ready → Preparing → Received (top-down priority) */}
+      {/* Empty columns collapse on mobile, stay visible on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Received */}
+        {/* Received — collapsed by default */}
         <KanbanColumn
           title="Received"
           count={received.length}
           color="amber"
           orders={received}
           onAdvance={handleAdvance}
+          autoExpand="none"
+          className={`order-3 lg:order-1 ${received.length === 0 ? "hidden lg:block" : ""}`}
         />
 
-        {/* Preparing */}
+        {/* Preparing — first card expanded */}
         <KanbanColumn
           title="Preparing"
           count={preparing.length}
           color="cyan"
           orders={preparing}
           onAdvance={handleAdvance}
+          autoExpand="first"
+          className={`order-2 lg:order-2 ${preparing.length === 0 ? "hidden lg:block" : ""}`}
         />
 
-        {/* Ready */}
+        {/* Ready — all expanded */}
         <KanbanColumn
           title="Ready"
           count={ready.length}
           color="emerald"
           orders={ready}
           onAdvance={handleAdvance}
+          autoExpand="all"
+          className={`order-1 lg:order-3 ${ready.length === 0 ? "hidden lg:block" : ""}`}
         />
       </div>
     </div>
@@ -193,12 +200,16 @@ function KanbanColumn({
   color,
   orders,
   onAdvance,
+  autoExpand = "all",
+  className,
 }: {
   title: string;
   count: number;
   color: "amber" | "cyan" | "emerald";
   orders: OrderDto[];
   onAdvance: (orderId: string, nextStatus: OrderStatus) => Promise<void>;
+  autoExpand?: "none" | "first" | "all";
+  className?: string;
 }) {
   const colorMap = {
     amber: {
@@ -221,7 +232,7 @@ function KanbanColumn({
   const c = colorMap[color];
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${className ?? ""}`}>
       <div
         className={`flex items-center gap-2 pb-2 border-b ${c.border}`}
       >
@@ -236,8 +247,16 @@ function KanbanColumn({
             No orders
           </p>
         ) : (
-          orders.map((order) => (
-            <OrderCard key={order.id} order={order} onAdvance={onAdvance} />
+          orders.map((order, index) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onAdvance={onAdvance}
+              defaultOpen={
+                autoExpand === "all" ||
+                (autoExpand === "first" && index === 0)
+              }
+            />
           ))
         )}
       </div>

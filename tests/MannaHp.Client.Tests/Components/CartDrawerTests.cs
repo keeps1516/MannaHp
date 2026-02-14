@@ -27,7 +27,7 @@ public class CartDrawerTests : BunitContext
     private static CartItem FixedItem(string name = "Latte", decimal price = 4.75m, int qty = 1) => new()
     {
         MenuItem = new MenuItemDto(Guid.NewGuid(), Guid.NewGuid(), name, null,
-            IsCustomizable: false, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: null),
+            ImageUrl: null, ImageApproximate: false, IsCustomizable: false, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: null),
         Variant = new MenuItemVariantDto(Guid.NewGuid(), "12oz", price, SortOrder: 0, Active: true),
         Quantity = qty
     };
@@ -35,11 +35,11 @@ public class CartDrawerTests : BunitContext
     private static CartItem CustomizableItem(string name = "Burrito Bowl", decimal ingredientPrice = 3.00m) => new()
     {
         MenuItem = new MenuItemDto(Guid.NewGuid(), Guid.NewGuid(), name, null,
-            IsCustomizable: true, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: []),
+            ImageUrl: null, ImageApproximate: false, IsCustomizable: true, Active: true, SortOrder: 0, Variants: [], AvailableIngredients: []),
         SelectedIngredients =
         [
             new AvailableIngredientDto(Guid.NewGuid(), Guid.NewGuid(), "Chicken",
-                ingredientPrice, QuantityUsed: 8m, IsDefault: false, GroupName: "Proteins", SortOrder: 0, Active: true)
+                ingredientPrice, QuantityUsed: 8m, IsDefault: false, GroupName: "Proteins", SortOrder: 0, Active: true, IngredientUnit: 0)
         ],
         Quantity = 1
     };
