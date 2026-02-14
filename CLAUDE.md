@@ -119,31 +119,53 @@ Received → Preparing → Ready → Completed
 
 ```
 ================================
-    MANNA
-    123 Main St
+    MANNA + HP
+    317 S Main St
+    Lindsay, OK 73052
+    (405) 208-2271
     Date: 2/6/2026 10:30 AM
     Order #1042
 ================================
 
-Burrito Bowl
+"Dad's Bowl" — Burrito Bowl
   10oz Jasmine Rice         $3.00
-  8oz Chicken               $3.00
-  Lettuce                   $0.50
+  5oz Beans                 $2.00
+  6oz Ground Beef           $3.00
   Fresh Salsa               $0.50
   Shredded Cheese           $0.50
-                    Item:   $7.50
+                    Item:   $9.00
 
 Latte (16oz)                $5.25
+  + Extra Espresso Shot     $1.00
+  + Whipped Cream           $0.50
+                    Item:   $6.75
+  Note: extra hot, oat milk
 
-Espresso Shot               $1.00
+Drip Coffee (12oz)          $2.50
 
 --------------------------------
-Subtotal:                  $13.75
-Tax (8.25%):                $1.13
-Total:                     $14.88
+Subtotal:                  $18.25
+Tax (8.25%):                $1.51
+Total:                     $19.76
 Payment: Visa ***4242
+
+Thank you for dining with us!
 ================================
 ```
+
+**Data sources for receipt fields:**
+- Store name/address/phone/footer: `app_settings` table (key-value pairs)
+- Order number: `orders.order_number` (PostgreSQL sequence, starts at 1001)
+- Date/time: `orders.created_at`
+- Item name: `order_items` → `menu_items.name`
+- Bowl name: `order_items.notes` (displayed as quoted prefix when present)
+- Variant: `order_items` → `menu_item_variants.name`
+- Bowl ingredients: `order_item_ingredients` (quantity_used + ingredient name + price_charged)
+- Drink add-ons: `order_item_ingredients` (prefixed with "+")
+- Item notes: `order_items.notes` (displayed as "Note:" line)
+- Subtotal/Tax/Total: `orders.subtotal`, `orders.tax`, `orders.total`
+- Tax rate: `orders.tax_rate` (formatted as percentage)
+- Payment: `orders.payment_method` + `orders.card_brand` + `orders.card_last4`
 
 ---
 

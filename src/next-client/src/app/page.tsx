@@ -80,7 +80,7 @@ export default function HomePage() {
         <h2 className="text-2xl font-bold tracking-tight text-white">
           Our Menu
         </h2>
-        <p className="text-[#7a9bb5]">What are you in the mood for?</p>
+        <p className="text-[#7a9bb5]">Fuel Your HP. Find Your Manna.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

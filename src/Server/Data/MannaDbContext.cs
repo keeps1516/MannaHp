@@ -18,6 +18,7 @@ public class MannaDbContext : DbContext
 	public DbSet<Order> Orders => Set<Order>();
 	public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 	public DbSet<OrderItemIngredient> OrderItemIngredients => Set<OrderItemIngredient>();
+	public DbSet<AppSettings> AppSettings => Set<AppSettings>();
 
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -127,14 +128,19 @@ public class MannaDbContext : DbContext
         });
 
 		// ── Order ──
+		modelBuilder.HasSequence<int>("order_number_seq").StartsAt(1001).IncrementsBy(1);
 		modelBuilder.Entity<Order>(e =>
 		{
 			e.ToTable("orders");
 			e.HasKey(o => o.Id);
+			e.Property(o => o.OrderNumber).HasDefaultValueSql("nextval('order_number_seq')");
+			e.HasIndex(o => o.OrderNumber).IsUnique();
 			e.Property(o => o.UserId).HasMaxLength(450);
 			e.Property(o => o.Status).HasDefaultValue(OrderStatus.Received);
 			e.Property(o => o.PaymentStatus).HasDefaultValue(PaymentStatus.Pending);
 			e.Property(o => o.StripePaymentId).HasMaxLength(255);
+			e.Property(o => o.CardBrand).HasMaxLength(20);
+			e.Property(o => o.CardLast4).HasMaxLength(4);
 			e.Property(o => o.Subtotal).HasPrecision(10, 2);
 			e.Property(o => o.TaxRate).HasPrecision(5, 4);
 			e.Property(o => o.Tax).HasPrecision(10, 2);
@@ -181,6 +187,25 @@ public class MannaDbContext : DbContext
 			e.HasOne(oii => oii.Ingredient)
 				.WithMany()
 				.HasForeignKey(oii => oii.IngredientId);
+		});
+
+		// ── AppSettings ──
+		modelBuilder.Entity<AppSettings>(e =>
+		{
+			e.ToTable("app_settings");
+			e.HasKey(s => s.Id);
+			e.Property(s => s.Key).HasMaxLength(100).IsRequired();
+			e.HasIndex(s => s.Key).IsUnique();
+			e.Property(s => s.Value).HasMaxLength(500).IsRequired();
+
+			e.HasData(
+				new AppSettings { Id = Guid.Parse("e0000000-0001-0000-0000-000000000001"), Key = "StoreName", Value = "Manna + HP" },
+				new AppSettings { Id = Guid.Parse("e0000000-0002-0000-0000-000000000002"), Key = "StoreAddress", Value = "317 S Main St" },
+				new AppSettings { Id = Guid.Parse("e0000000-0003-0000-0000-000000000003"), Key = "StoreCity", Value = "Lindsay, OK 73052" },
+				new AppSettings { Id = Guid.Parse("e0000000-0004-0000-0000-000000000004"), Key = "StorePhone", Value = "(405) 208-2271" },
+				new AppSettings { Id = Guid.Parse("e0000000-0005-0000-0000-000000000005"), Key = "DefaultTaxRate", Value = "0.0825" },
+				new AppSettings { Id = Guid.Parse("e0000000-0006-0000-0000-000000000006"), Key = "ReceiptFooter", Value = "Our pleasure to serve you!" }
+			);
 		});
 
 		// ── Seed Data ──
