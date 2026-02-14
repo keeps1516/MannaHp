@@ -11,11 +11,16 @@ namespace MannaHp.Server.Tests.Endpoints;
 public class IngredientEndpointsTests
 {
     private readonly HttpClient _client;
+    private readonly MannaApiFactory _factory;
 
     // Known seed GUIDs
     private static readonly Guid IngChicken = Guid.Parse("b0000000-0004-0000-0000-000000000004");
 
-    public IngredientEndpointsTests(MannaApiFactory factory) => _client = factory.CreateClient();
+    public IngredientEndpointsTests(MannaApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
 
     // ── GET /api/ingredients ────────────────────────────────────────
 
@@ -54,8 +59,9 @@ public class IngredientEndpointsTests
     [Fact]
     public async Task Post_ValidRequest_Returns201()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
         var req = new CreateIngredientRequest("Test Ingredient", UnitOfMeasure.Lb, 5.00m, 100m, 10m);
-        var response = await _client.PostAsJsonAsync("/api/ingredients", req);
+        var response = await ownerClient.PostAsJsonAsync("/api/ingredients", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -67,8 +73,9 @@ public class IngredientEndpointsTests
     [Fact]
     public async Task Post_EmptyName_Returns400()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
         var req = new CreateIngredientRequest("", UnitOfMeasure.Oz, 1m, 10m, 5m);
-        var response = await _client.PostAsJsonAsync("/api/ingredients", req);
+        var response = await ownerClient.PostAsJsonAsync("/api/ingredients", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

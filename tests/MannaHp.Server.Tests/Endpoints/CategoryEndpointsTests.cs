@@ -10,11 +10,16 @@ namespace MannaHp.Server.Tests.Endpoints;
 public class CategoryEndpointsTests
 {
     private readonly HttpClient _client;
+    private readonly MannaApiFactory _factory;
 
     // Known seed GUIDs
     private static readonly Guid CatBowls = Guid.Parse("a1b2c3d4-0001-0000-0000-000000000001");
 
-    public CategoryEndpointsTests(MannaApiFactory factory) => _client = factory.CreateClient();
+    public CategoryEndpointsTests(MannaApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
 
     // ── GET /api/categories ─────────────────────────────────────────
 
@@ -67,8 +72,9 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Post_ValidRequest_Returns201WithCategory()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
         var req = new CreateCategoryRequest("Test Category Post", 99);
-        var response = await _client.PostAsJsonAsync("/api/categories", req);
+        var response = await ownerClient.PostAsJsonAsync("/api/categories", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -82,8 +88,9 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Post_EmptyName_Returns400()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
         var req = new CreateCategoryRequest("", 1);
-        var response = await _client.PostAsJsonAsync("/api/categories", req);
+        var response = await ownerClient.PostAsJsonAsync("/api/categories", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -91,8 +98,9 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Post_NegativeSortOrder_Returns400()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
         var req = new CreateCategoryRequest("Bad Sort", -1);
-        var response = await _client.PostAsJsonAsync("/api/categories", req);
+        var response = await ownerClient.PostAsJsonAsync("/api/categories", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -102,13 +110,15 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Put_ValidRequest_UpdatesCategory()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
+
         // Create a category specifically for this test so we don't mutate seed data
         var createReq = new CreateCategoryRequest("Category To Update", 50);
-        var createResp = await _client.PostAsJsonAsync("/api/categories", createReq);
+        var createResp = await ownerClient.PostAsJsonAsync("/api/categories", createReq);
         var created = await createResp.Content.ReadFromJsonAsync<CategoryDto>();
 
         var req = new UpdateCategoryRequest("Updated Category", 51, true);
-        var response = await _client.PutAsJsonAsync($"/api/categories/{created!.Id}", req);
+        var response = await ownerClient.PutAsJsonAsync($"/api/categories/{created!.Id}", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -120,8 +130,9 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Put_NonexistentId_Returns404()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
         var req = new UpdateCategoryRequest("Whatever", 1, true);
-        var response = await _client.PutAsJsonAsync($"/api/categories/{Guid.NewGuid()}", req);
+        var response = await ownerClient.PutAsJsonAsync($"/api/categories/{Guid.NewGuid()}", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -131,12 +142,14 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Delete_ExistingCategory_Returns204_SoftDeletes()
     {
+        var ownerClient = await _factory.CreateOwnerClientAsync();
+
         // Create a category specifically for this test so we don't affect other tests
         var createReq = new CreateCategoryRequest("Category To Delete", 98);
-        var createResp = await _client.PostAsJsonAsync("/api/categories", createReq);
+        var createResp = await ownerClient.PostAsJsonAsync("/api/categories", createReq);
         var created = await createResp.Content.ReadFromJsonAsync<CategoryDto>();
 
-        var response = await _client.DeleteAsync($"/api/categories/{created!.Id}");
+        var response = await ownerClient.DeleteAsync($"/api/categories/{created!.Id}");
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify soft delete — category still exists but Active is false
@@ -147,7 +160,8 @@ public class CategoryEndpointsTests
     [Fact]
     public async Task Delete_NonexistentId_Returns404()
     {
-        var response = await _client.DeleteAsync($"/api/categories/{Guid.NewGuid()}");
+        var ownerClient = await _factory.CreateOwnerClientAsync();
+        var response = await ownerClient.DeleteAsync($"/api/categories/{Guid.NewGuid()}");
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

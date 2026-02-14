@@ -11,6 +11,7 @@ namespace MannaHp.Server.Tests.Endpoints;
 public class OrderEndpointsTests
 {
     private readonly HttpClient _client;
+    private readonly MannaApiFactory _factory;
 
     // ── Known seed GUIDs (from SeedData.cs) ──────────────────────────
     // Menu items
@@ -35,7 +36,11 @@ public class OrderEndpointsTests
 
     private const decimal TaxRate = 0.0825m;
 
-    public OrderEndpointsTests(MannaApiFactory factory) => _client = factory.CreateClient();
+    public OrderEndpointsTests(MannaApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────
 
@@ -263,19 +268,21 @@ public class OrderEndpointsTests
     [Fact]
     public async Task GetActive_ExcludesCompletedAndCancelled()
     {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
         // Create an order, then mark it completed
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiChips, VChips));
         var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
 
-        await _client.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
+        await staffClient.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
             new UpdateOrderStatusRequest(OrderStatus.Completed));
 
         // Create another active order
         var activeResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiEspShot, VEspShot));
         var active = await activeResponse.Content.ReadFromJsonAsync<OrderDto>();
 
-        // Fetch active orders
-        var orders = await _client.GetFromJsonAsync<List<OrderDto>>("/api/orders/active");
+        // Fetch active orders (requires Staff auth)
+        var orders = await staffClient.GetFromJsonAsync<List<OrderDto>>("/api/orders/active");
 
         orders.Should().NotBeNull();
         orders!.Should().NotContain(o => o.Id == created.Id);
@@ -287,17 +294,19 @@ public class OrderEndpointsTests
     [Fact]
     public async Task PatchStatus_UpdatesOrderStatus()
     {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
         // Create an order
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte16));
         var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
 
-        // Update status to Preparing
-        var patchResponse = await _client.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
+        // Update status to Preparing (requires Staff auth)
+        var patchResponse = await staffClient.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
             new UpdateOrderStatusRequest(OrderStatus.Preparing));
 
         patchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Verify via GET
+        // Verify via GET (anonymous)
         var order = await _client.GetFromJsonAsync<OrderDto>($"/api/orders/{created.Id}");
         order!.Status.Should().Be(OrderStatus.Preparing);
     }
@@ -305,7 +314,9 @@ public class OrderEndpointsTests
     [Fact]
     public async Task PatchStatus_NonexistentId_Returns404()
     {
-        var response = await _client.PatchAsJsonAsync($"/api/orders/{Guid.NewGuid()}/status",
+        var staffClient = await _factory.CreateStaffClientAsync();
+
+        var response = await staffClient.PatchAsJsonAsync($"/api/orders/{Guid.NewGuid()}/status",
             new UpdateOrderStatusRequest(OrderStatus.Preparing));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -314,10 +325,12 @@ public class OrderEndpointsTests
     [Fact]
     public async Task PatchStatus_InvalidStatus_Returns400()
     {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte12));
         var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
 
-        var response = await _client.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
+        var response = await staffClient.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
             new UpdateOrderStatusRequest((OrderStatus)999));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

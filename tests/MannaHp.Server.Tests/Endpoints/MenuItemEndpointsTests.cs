@@ -10,13 +10,18 @@ namespace MannaHp.Server.Tests.Endpoints;
 public class MenuItemEndpointsTests
 {
     private readonly HttpClient _client;
+    private readonly MannaApiFactory _factory;
 
     // Known seed GUIDs
     private static readonly Guid CatBowls = Guid.Parse("a1b2c3d4-0001-0000-0000-000000000001");
     private static readonly Guid MiBowl = Guid.Parse("c0000000-0001-0000-0000-000000000001");
     private static readonly Guid MiLatte = Guid.Parse("c0000000-0009-0000-0000-000000000009");
 
-    public MenuItemEndpointsTests(MannaApiFactory factory) => _client = factory.CreateClient();
+    public MenuItemEndpointsTests(MannaApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
 
     // ── GET /api/menu-items ─────────────────────────────────────────
 
@@ -57,14 +62,16 @@ public class MenuItemEndpointsTests
     // ── GET /api/menu-items/{id} — Fixed ────────────────────────────
 
     [Fact]
-    public async Task GetById_FixedItem_ReturnsNullAvailableIngredients()
+    public async Task GetById_FixedItem_ReturnsAvailableAddOns()
     {
         var item = await _client.GetFromJsonAsync<MenuItemDto>($"/api/menu-items/{MiLatte}");
 
         item.Should().NotBeNull();
         item!.Name.Should().Be("Latte");
         item.IsCustomizable.Should().BeFalse();
-        item.AvailableIngredients.Should().BeNull();
+        // Latte has add-ons (espresso shot, alt milk, whipped cream)
+        item.AvailableIngredients.Should().NotBeNull();
+        item.AvailableIngredients!.Should().HaveCount(3);
     }
 
     [Fact]
@@ -81,8 +88,9 @@ public class MenuItemEndpointsTests
     [Fact]
     public async Task Post_ValidRequest_Returns201()
     {
-        var req = new CreateMenuItemRequest(CatBowls, "Test Item", "Description", false, 99);
-        var response = await _client.PostAsJsonAsync("/api/menu-items", req);
+        var ownerClient = await _factory.CreateOwnerClientAsync();
+        var req = new CreateMenuItemRequest(CatBowls, "Test Item", "Description", null, false, false, 99);
+        var response = await ownerClient.PostAsJsonAsync("/api/menu-items", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
@@ -94,8 +102,9 @@ public class MenuItemEndpointsTests
     [Fact]
     public async Task Post_NonexistentCategoryId_Returns400()
     {
-        var req = new CreateMenuItemRequest(Guid.NewGuid(), "Bad Item", null, false, 0);
-        var response = await _client.PostAsJsonAsync("/api/menu-items", req);
+        var ownerClient = await _factory.CreateOwnerClientAsync();
+        var req = new CreateMenuItemRequest(Guid.NewGuid(), "Bad Item", null, null, false, false, 0);
+        var response = await ownerClient.PostAsJsonAsync("/api/menu-items", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -103,8 +112,9 @@ public class MenuItemEndpointsTests
     [Fact]
     public async Task Post_EmptyName_Returns400()
     {
-        var req = new CreateMenuItemRequest(CatBowls, "", null, false, 0);
-        var response = await _client.PostAsJsonAsync("/api/menu-items", req);
+        var ownerClient = await _factory.CreateOwnerClientAsync();
+        var req = new CreateMenuItemRequest(CatBowls, "", null, null, false, false, 0);
+        var response = await ownerClient.PostAsJsonAsync("/api/menu-items", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
