@@ -15,7 +15,7 @@ public record UpdateVariantRequest(string Name, decimal Price, int SortOrder, bo
 
 public record AvailableIngredientDto(Guid Id, Guid IngredientId, string IngredientName,
 				decimal CustomerPrice, decimal QuantityUsed, bool IsDefault, string GroupName,
-				int SortOrder, bool Active);
+				int SortOrder, bool Active, int IngredientUnit);
 public record CreateAvailableIngredientRequest(Guid IngredientId, decimal CustomerPrice,
 				decimal QuantityUsed, bool IsDefault, string GroupName, int SortOrder);
 public record UpdateAvailableIngredientRequest(decimal CustomerPrice, decimal QuantityUsed,

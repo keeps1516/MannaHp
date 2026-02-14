@@ -45,6 +45,17 @@ export interface MenuItemVariantDto {
   active: boolean;
 }
 
+export enum UnitOfMeasure {
+  Oz = 0,
+  Lb = 1,
+  Cups = 2,
+  FlOz = 3,
+  Tsp = 4,
+  Tbsp = 5,
+  Each = 6,
+  Shot = 7,
+}
+
 export interface AvailableIngredientDto {
   id: string;
   ingredientId: string;
@@ -55,6 +66,7 @@ export interface AvailableIngredientDto {
   groupName: string;
   sortOrder: number;
   active: boolean;
+  ingredientUnit: UnitOfMeasure;
 }
 
 export interface CreateOrderRequest {

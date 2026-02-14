@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { QuantitySelector } from "@/components/quantity-selector";
 import { useCart } from "@/store/cart-context";
 import { getIngredientEmoji } from "@/lib/ingredient-emoji";
+import { formatMeasurement } from "@/lib/unit-label";
 import type { MenuItemDto, AvailableIngredientDto } from "@/types/api";
 import { toast } from "sonner";
 
@@ -162,6 +163,11 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
                     <span className="text-sm font-medium text-center leading-tight text-white">
                       {ing.ingredientName}
                     </span>
+                    {formatMeasurement(ing.quantityUsed, ing.ingredientUnit) && (
+                      <span className="text-xs text-white mt-0.5">
+                        {formatMeasurement(ing.quantityUsed, ing.ingredientUnit)}
+                      </span>
+                    )}
                     <span className="text-sm font-semibold text-[#00e5ff] mt-0.5">
                       ${ing.customerPrice.toFixed(2)}
                     </span>

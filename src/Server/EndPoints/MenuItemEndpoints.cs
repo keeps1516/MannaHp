@@ -27,7 +27,7 @@ public static class MenuItemEndpoints
                         ? m.AvailableIngredients.OrderBy(a => a.SortOrder).Select(a =>
                             new AvailableIngredientDto(a.Id, a.IngredientId, a.Ingredient!.Name!,
                                 a.CustomerPrice, a.QuantityUsed, a.IsDefault, a.GroupName!,
-                                a.SortOrder, a.Active)).ToList()
+                                a.SortOrder, a.Active, (int)a.Ingredient!.Unit)).ToList()
                         : null))
                 .ToListAsync());
 
@@ -50,7 +50,7 @@ public static class MenuItemEndpoints
                     ? m.AvailableIngredients.OrderBy(a => a.SortOrder).Select(a =>
                         new AvailableIngredientDto(a.Id, a.IngredientId, a.Ingredient!.Name!,
                             a.CustomerPrice, a.QuantityUsed, a.IsDefault, a.GroupName!,
-                            a.SortOrder, a.Active)).ToList()
+                            a.SortOrder, a.Active, (int)a.Ingredient!.Unit)).ToList()
                     : null));
         });
 

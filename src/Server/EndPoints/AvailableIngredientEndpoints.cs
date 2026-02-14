@@ -24,7 +24,7 @@ public static class AvailableIngredientEndpoints
                 .OrderBy(a => a.GroupName).ThenBy(a => a.SortOrder)
                 .Select(a => new AvailableIngredientDto(a.Id, a.IngredientId, a.Ingredient!.Name!,
                     a.CustomerPrice, a.QuantityUsed, a.IsDefault, a.GroupName!,
-                    a.SortOrder, a.Active))
+                    a.SortOrder, a.Active, (int)a.Ingredient!.Unit))
                 .ToListAsync();
 
             return Results.Ok(ingredients);
@@ -59,7 +59,7 @@ public static class AvailableIngredientEndpoints
                 $"/api/menu-items/{menuItemId}/available-ingredients/{available.Id}",
                 new AvailableIngredientDto(available.Id, available.IngredientId, ingredient.Name!,
                     available.CustomerPrice, available.QuantityUsed, available.IsDefault,
-                    available.GroupName!, available.SortOrder, available.Active));
+                    available.GroupName!, available.SortOrder, available.Active, (int)ingredient.Unit));
         }).AddEndpointFilter<ValidationFilter<CreateAvailableIngredientRequest>>();
 
         group.MapPut("/{availableId:guid}", async (Guid menuItemId, Guid availableId,
@@ -79,7 +79,8 @@ public static class AvailableIngredientEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(new AvailableIngredientDto(available.Id, available.IngredientId,
                 available.Ingredient!.Name!, available.CustomerPrice, available.QuantityUsed,
-                available.IsDefault, available.GroupName!, available.SortOrder, available.Active));
+                available.IsDefault, available.GroupName!, available.SortOrder, available.Active,
+                (int)available.Ingredient!.Unit));
         }).AddEndpointFilter<ValidationFilter<UpdateAvailableIngredientRequest>>();
 
         group.MapDelete("/{availableId:guid}", async (Guid menuItemId, Guid availableId, MannaDbContext db) =>
