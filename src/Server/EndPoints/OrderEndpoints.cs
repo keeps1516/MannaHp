@@ -44,9 +44,25 @@ public static class OrderEndpoints
                     Notes = itemReq.Notes
                 };
 
-                if (menuItem.IsCustomizable && itemReq.SelectedIngredientIds?.Count > 0)
+                decimal unitPrice = 0;
+
+                // Step 1: If a variant is provided, look it up and use its price as the base
+                if (itemReq.VariantId is not null)
                 {
-                    // Look up each selected ingredient from available ingredients
+                    var variant = await db.MenuItemVariants
+                        .FirstOrDefaultAsync(v => v.Id == itemReq.VariantId && v.MenuItemId == itemReq.MenuItemId);
+                    if (variant is null)
+                        return Results.ValidationProblem(new Dictionary<string, string[]>
+                        {
+                            ["VariantId"] = [$"Variant {itemReq.VariantId} not found for this menu item"]
+                        });
+
+                    unitPrice += variant.Price;
+                }
+
+                // Step 2: If ingredients are selected, look them up and add their prices
+                if (itemReq.SelectedIngredientIds?.Count > 0)
+                {
                     var availableIngredients = await db.MenuItemAvailableIngredients
                         .Include(a => a.Ingredient)
                         .Where(a => a.MenuItemId == itemReq.MenuItemId
@@ -70,27 +86,17 @@ public static class OrderEndpoints
                         });
                     }
 
-                    orderItem.UnitPrice = availableIngredients.Sum(a => a.CustomerPrice);
+                    unitPrice += availableIngredients.Sum(a => a.CustomerPrice);
                 }
-                else if (!menuItem.IsCustomizable)
-                {
-                    // Fixed item — price comes from the variant
-                    if (itemReq.VariantId is null)
-                        return Results.ValidationProblem(new Dictionary<string, string[]>
-                        {
-                            ["VariantId"] = ["Variant is required for fixed menu items"]
-                        });
 
-                    var variant = await db.MenuItemVariants
-                        .FirstOrDefaultAsync(v => v.Id == itemReq.VariantId && v.MenuItemId == itemReq.MenuItemId);
-                    if (variant is null)
-                        return Results.ValidationProblem(new Dictionary<string, string[]>
-                        {
-                            ["VariantId"] = [$"Variant {itemReq.VariantId} not found for this menu item"]
-                        });
+                // Validate: must have at least a variant or ingredients
+                if (itemReq.VariantId is null && (itemReq.SelectedIngredientIds is null || itemReq.SelectedIngredientIds.Count == 0))
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["Item"] = ["Either a variant or selected ingredients must be provided"]
+                    });
 
-                    orderItem.UnitPrice = variant.Price;
-                }
+                orderItem.UnitPrice = unitPrice;
 
                 orderItem.TotalPrice = orderItem.UnitPrice * orderItem.Quantity;
                 order.Items.Add(orderItem);

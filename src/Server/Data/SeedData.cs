@@ -293,6 +293,7 @@ public static class SeedData
     {
         var id = 1;
         modelBuilder.Entity<MenuItemAvailableIngredient>().HasData(
+            // ── Bowl ingredients ──
             Avail(id++, MiBowl, IngJRice, 3.00m, 10.0m, "Bases", 1),
             Avail(id++, MiBowl, IngBeans, 2.00m, 5.0m, "Bases", 2),
             Avail(id++, MiBowl, IngGBeef, 3.00m, 6.0m, "Proteins", 1),
@@ -302,7 +303,97 @@ public static class SeedData
             Avail(id++, MiBowl, IngTomatoes, 0.50m, 2.0m, "Fresh Toppings", 2),
             Avail(id++, MiBowl, IngJalapenos, 0.25m, 1.0m, "Fresh Toppings", 3),
             Avail(id++, MiBowl, IngSalsa, 0.50m, 2.0m, "Fresh Toppings", 4),
-            Avail(id++, MiBowl, IngShrCheese, 0.50m, 1.5m, "Fresh Toppings", 5)
+            Avail(id++, MiBowl, IngShrCheese, 0.50m, 1.5m, "Fresh Toppings", 5),
+
+            // ── Drink add-ons ──
+            // Latte
+            Avail(id++, MiLatte, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiLatte, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiLatte, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Cappuccino
+            Avail(id++, MiCappuccino, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiCappuccino, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiCappuccino, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Americano
+            Avail(id++, MiAmericano, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiAmericano, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            // Mocha
+            Avail(id++, MiMocha, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiMocha, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiMocha, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // White Mocha
+            Avail(id++, MiWhtMocha, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiWhtMocha, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiWhtMocha, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Caramel Macchiato
+            Avail(id++, MiCaraMac, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiCaraMac, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiCaraMac, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Flavored Latte
+            Avail(id++, MiFlvLatte, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiFlvLatte, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiFlvLatte, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Caramel Latte
+            Avail(id++, MiCaraLatte, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiCaraLatte, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiCaraLatte, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Cortado
+            Avail(id++, MiCortado, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiCortado, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Café au Lait
+            Avail(id++, MiAuLait, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiAuLait, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Iced Latte
+            Avail(id++, MiIcedLatte, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiIcedLatte, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiIcedLatte, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Cold Brew
+            Avail(id++, MiColdBrew, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiColdBrew, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiColdBrew, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Iced Coffee
+            Avail(id++, MiIcedCoffee, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiIcedCoffee, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            // Blended Mocha
+            Avail(id++, MiBlendMocha, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiBlendMocha, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            // Blended Caramel
+            Avail(id++, MiBlendCaramel, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiBlendCaramel, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            // Chai Latte
+            Avail(id++, MiChaiLatte, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiChaiLatte, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiChaiLatte, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Hot Chocolate
+            Avail(id++, MiHotChoc, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiHotChoc, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiHotChoc, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Steamer
+            Avail(id++, MiSteamer, IngWhipCream, 0.50m, 1.5m, "Extras", 1),
+            Avail(id++, MiSteamer, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Drip Coffee
+            Avail(id++, MiDrip, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiDrip, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            // Seasonal — Pumpkin Spice Latte
+            Avail(id++, MiPumpkin, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiPumpkin, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiPumpkin, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Seasonal — Maple Brown Sugar Latte
+            Avail(id++, MiMaple, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiMaple, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiMaple, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Seasonal — Toasted Marshmallow Mocha
+            Avail(id++, MiMarshmallow, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiMarshmallow, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiMarshmallow, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Seasonal — Peppermint Mocha
+            Avail(id++, MiPepMocha, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiPepMocha, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiPepMocha, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1),
+            // Seasonal — Gingerbread Latte
+            Avail(id++, MiGingerbread, IngEspresso, 1.00m, 1.0m, "Extras", 1),
+            Avail(id++, MiGingerbread, IngWhipCream, 0.50m, 1.5m, "Extras", 2),
+            Avail(id++, MiGingerbread, IngAltMilk, 0.75m, 2.0m, "Milk Substitute", 1)
         );
     }
 

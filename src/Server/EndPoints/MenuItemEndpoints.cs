@@ -23,7 +23,7 @@ public static class MenuItemEndpoints
                     m.IsCustomizable, m.Active, m.SortOrder,
                     m.Variants.OrderBy(v => v.Sortorder).Select(v =>
                         new MenuItemVariantDto(v.Id, v.Name, v.Price, v.Sortorder, v.Active)).ToList(),
-                    m.IsCustomizable
+                    m.AvailableIngredients.Any()
                         ? m.AvailableIngredients.OrderBy(a => a.SortOrder).Select(a =>
                             new AvailableIngredientDto(a.Id, a.IngredientId, a.Ingredient!.Name!,
                                 a.CustomerPrice, a.QuantityUsed, a.IsDefault, a.GroupName!,
@@ -46,7 +46,7 @@ public static class MenuItemEndpoints
                 m.IsCustomizable, m.Active, m.SortOrder,
                 m.Variants.OrderBy(v => v.Sortorder).Select(v =>
                     new MenuItemVariantDto(v.Id, v.Name, v.Price, v.Sortorder, v.Active)).ToList(),
-                m.IsCustomizable
+                m.AvailableIngredients.Any()
                     ? m.AvailableIngredients.OrderBy(a => a.SortOrder).Select(a =>
                         new AvailableIngredientDto(a.Id, a.IngredientId, a.Ingredient!.Name!,
                             a.CustomerPrice, a.QuantityUsed, a.IsDefault, a.GroupName!,

@@ -10,13 +10,10 @@ export interface CartItem {
 }
 
 export function getUnitPrice(item: CartItem): number {
-  if (item.menuItem.isCustomizable) {
-    return (
-      item.selectedIngredients?.reduce((sum, i) => sum + i.customerPrice, 0) ??
-      0
-    );
-  }
-  return item.variant?.price ?? 0;
+  const variantPrice = item.variant?.price ?? 0;
+  const ingredientPrice =
+    item.selectedIngredients?.reduce((sum, i) => sum + i.customerPrice, 0) ?? 0;
+  return variantPrice + ingredientPrice;
 }
 
 export function getLineTotal(item: CartItem): number {
