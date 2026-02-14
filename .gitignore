@@ -31,3 +31,5 @@ Thumbs.db
 .env
 *.env
 appsettings.*.local.json
+/node_modules/.bin
+node_modules

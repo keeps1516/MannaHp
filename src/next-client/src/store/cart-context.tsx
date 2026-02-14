@@ -1,0 +1,98 @@
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useReducer,
+  type ReactNode,
+} from "react";
+import type { CartItem } from "@/types/cart";
+import { getLineTotal } from "@/types/cart";
+
+const TAX_RATE = 0.0825;
+
+interface CartState {
+  items: CartItem[];
+}
+
+type CartAction =
+  | { type: "ADD_ITEM"; payload: Omit<CartItem, "id"> }
+  | { type: "REMOVE_ITEM"; payload: string }
+  | { type: "UPDATE_QUANTITY"; payload: { id: string; quantity: number } }
+  | { type: "CLEAR" };
+
+function cartReducer(state: CartState, action: CartAction): CartState {
+  switch (action.type) {
+    case "ADD_ITEM":
+      return {
+        items: [
+          ...state.items,
+          { ...action.payload, id: crypto.randomUUID() },
+        ],
+      };
+    case "REMOVE_ITEM":
+      return { items: state.items.filter((i) => i.id !== action.payload) };
+    case "UPDATE_QUANTITY": {
+      if (action.payload.quantity <= 0) {
+        return {
+          items: state.items.filter((i) => i.id !== action.payload.id),
+        };
+      }
+      return {
+        items: state.items.map((i) =>
+          i.id === action.payload.id
+            ? { ...i, quantity: action.payload.quantity }
+            : i
+        ),
+      };
+    }
+    case "CLEAR":
+      return { items: [] };
+    default:
+      return state;
+  }
+}
+
+interface CartContextValue {
+  items: CartItem[];
+  itemCount: number;
+  subtotal: number;
+  tax: number;
+  total: number;
+  addItem: (item: Omit<CartItem, "id">) => void;
+  removeItem: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  clear: () => void;
+}
+
+const CartContext = createContext<CartContextValue | null>(null);
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(cartReducer, { items: [] });
+
+  const itemCount = state.items.reduce((sum, i) => sum + i.quantity, 0);
+  const subtotal = state.items.reduce((sum, i) => sum + getLineTotal(i), 0);
+  const tax = Math.round(subtotal * TAX_RATE * 100) / 100;
+  const total = subtotal + tax;
+
+  const value: CartContextValue = {
+    items: state.items,
+    itemCount,
+    subtotal,
+    tax,
+    total,
+    addItem: (item) => dispatch({ type: "ADD_ITEM", payload: item }),
+    removeItem: (id) => dispatch({ type: "REMOVE_ITEM", payload: id }),
+    updateQuantity: (id, quantity) =>
+      dispatch({ type: "UPDATE_QUANTITY", payload: { id, quantity } }),
+    clear: () => dispatch({ type: "CLEAR" }),
+  };
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
+
+export function useCart() {
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error("useCart must be used within CartProvider");
+  return ctx;
+}

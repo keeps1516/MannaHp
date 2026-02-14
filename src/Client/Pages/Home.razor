@@ -1,73 +1,92 @@
 @page "/"
 @inject MenuService MenuSvc
-@inject IDialogService DialogService
 
 <PageTitle>Manna — Menu</PageTitle>
 
-@if (_loading)
-{
-    <MudStack Spacing="4" Class="mt-4">
-        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="48px" />
-        <MudGrid>
-            @for (var i = 0; i < 6; i++)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" />
-                </MudItem>
-            }
-        </MudGrid>
-    </MudStack>
-}
-else if (_error is not null)
+@if (_error is not null)
 {
     <MudAlert Severity="Severity.Error" Class="mt-4">@_error</MudAlert>
 }
 else
 {
-    <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
-             PanelClass="pt-4" Class="mt-2">
-        @foreach (var category in _categories)
+   
+        <MudStack AlignItems="AlignItems.Center" Class="mt-4 mb-2">
+        @if (_loading)
         {
-            var itemsInCategory = _menuItems
-                .Where(m => m.CategoryId == category.Id && m.Active)
-                .OrderBy(m => m.SortOrder)
-                .ToList();
-
-            @if (itemsInCategory.Count > 0)
-            {
-                <MudTabPanel Text="@category.Name">
-                    <MudGrid Spacing="3">
-                        @foreach (var item in itemsInCategory)
-                        {
-                            <MudItem xs="12" sm="6" md="4">
-                                <MudCard Elevation="1" Class="menu-card" @onclick="() => OpenItemDialog(item)"
-                                         Style="cursor: pointer; height: 100%; transition: box-shadow 0.2s;">
-                                    <MudCardContent>
-                                        <MudText Typo="Typo.h6">@item.Name</MudText>
-                                        @if (!string.IsNullOrEmpty(item.Description))
-                                        {
-                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
-                                                @item.Description
-                                            </MudText>
-                                        }
-                                    </MudCardContent>
-                                    <MudCardActions>
-                                        <MudText Typo="Typo.subtitle1" Color="Color.Primary"
-                                                 Style="font-weight: 600; padding-left: 8px;">
-                                            @FormatPrice(item)
-                                        </MudText>
-                                        <MudSpacer />
-                                        <MudIcon Icon="@Icons.Material.Filled.AddCircle"
-                                                 Color="Color.Secondary" Size="Size.Medium" />
-                                    </MudCardActions>
-                                </MudCard>
-                            </MudItem>
-                        }
-                    </MudGrid>
-                </MudTabPanel>
-            }
+        <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
         }
-    </MudTabs>
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true"
+                     PanelClass="pt-4" Class="mt-2">
+                @foreach (var category in _categories)
+                {
+                    var itemsInCategory = _menuItems
+                    .Where(m => m.CategoryId == category.Id && m.Active)
+                    .OrderBy(m => m.SortOrder)
+                    .ToList();
+
+                    @if (itemsInCategory.Count > 0)
+                    {
+                        <MudTabPanel Text="@category.Name">
+                            <MudGrid Spacing="3">
+                                @foreach (var item in itemsInCategory)
+                                {
+                                    var isExpanded = _expandedItemId == item.Id;
+
+                                    <MudItem xs="12" sm="@(isExpanded ? 12 : 6)" md="@(isExpanded ? 8 : 4)">
+                                        <MudCard Elevation="@(isExpanded ? 3 : 1)" Class="menu-card"
+                                                 Style="@($"height: 100%; transition: all 0.2s; {(isExpanded ? "border: 2px solid var(--mud-palette-primary);" : "cursor: pointer;")}")">
+                                            <MudCardContent @onclick="() => ToggleCard(item.Id)" Style="cursor: pointer;">
+                                                <MudStack Row="true" AlignItems="AlignItems.Center">
+                                                    <MudStack Spacing="0" Style="flex: 1;">
+                                                        <MudText Typo="Typo.h6">@item.Name</MudText>
+                                                        @if (!string.IsNullOrEmpty(item.Description))
+                                                        {
+                                                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                                                @item.Description
+                                                            </MudText>
+                                                        }
+                                                    </MudStack>
+                                                    <MudIcon Icon="@(isExpanded? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                                             Color="Color.Primary" />
+                                                </MudStack>
+
+                                                @if (!isExpanded)
+                                                {
+                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-2">
+                                                        <MudText Typo="Typo.subtitle1" Color="Color.Primary"
+                                                                 Style="font-weight: 600;">
+                                                            @FormatPrice(item)
+                                                        </MudText>
+                                                        <MudSpacer />
+                                                        <MudIcon Icon="@Icons.Material.Filled.AddCircle"
+                                                                 Color="Color.Secondary" Size="Size.Medium" />
+                                                    </MudStack>
+                                                }
+                                            </MudCardContent>
+
+                                            @if (isExpanded)
+                                            {
+                                                <MudDivider />
+                                                <MudCardContent>
+                                                    @if (item.IsCustomizable)
+                                                    {
+                                                        <BowlBuilderCard MenuItem="item" OnItemAdded="() => CollapseCard()" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <FixedItemCard MenuItem="item" OnItemAdded="() => CollapseCard()" />
+                                                    }
+                                                </MudCardContent>
+                                            }
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudTabPanel>
+                    }
+                }
+            </MudTabs>
+        </MudStack>
 }
 
 @code {
@@ -75,6 +94,7 @@ else
     private List<MenuItemDto> _menuItems = [];
     private bool _loading = true;
     private string? _error;
+    private Guid? _expandedItemId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,6 +102,11 @@ else
         {
             _categories = await MenuSvc.GetCategoriesAsync();
             _menuItems = await MenuSvc.GetMenuItemsAsync();
+
+            // Auto-expand the first customizable item (burrito bowl)
+            var firstCustomizable = _menuItems.FirstOrDefault(m => m.IsCustomizable && m.Active);
+            if (firstCustomizable is not null)
+                _expandedItemId = firstCustomizable.Id;
         }
         catch (Exception ex)
         {
@@ -91,6 +116,16 @@ else
         {
             _loading = false;
         }
+    }
+
+    private void ToggleCard(Guid itemId)
+    {
+        _expandedItemId = _expandedItemId == itemId ? null : itemId;
+    }
+
+    private void CollapseCard()
+    {
+        _expandedItemId = null;
     }
 
     private string FormatPrice(MenuItemDto item)
@@ -109,30 +144,5 @@ else
 
         var min = activeVariants.Min(v => v.Price);
         return $"from ${min:F2}";
-    }
-
-    private async Task OpenItemDialog(MenuItemDto item)
-    {
-        var parameters = new DialogParameters
-        {
-            { "MenuItem", item }
-        };
-
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true,
-            CloseOnEscapeKey = true,
-            NoHeader = false
-        };
-
-        if (item.IsCustomizable)
-        {
-            await DialogService.ShowAsync<BowlBuilderDialog>(item.Name, parameters, options);
-        }
-        else
-        {
-            await DialogService.ShowAsync<FixedItemDialog>(item.Name, parameters, options);
-        }
     }
 }

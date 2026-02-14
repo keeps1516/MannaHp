@@ -1,0 +1,102 @@
+@inject CartService Cart
+@inject ISnackbar Snackbar
+
+@if (_variants.Count > 1)
+{
+    <MudText Typo="Typo.subtitle2" Class="mb-2">Select Size</MudText>
+    <MudChipSet T="Guid" SelectedValue="_selectedVariantId"
+                SelectedValueChanged="OnVariantSelected"
+                SelectionMode="SelectionMode.SingleSelection"
+                CheckMark="true"
+                Color="Color.Primary" Variant="Variant.Outlined">
+        @foreach (var variant in _variants)
+        {
+            <MudChip T="Guid" Value="variant.Id">
+                @variant.Name — $@variant.Price.ToString("F2")
+            </MudChip>
+        }
+    </MudChipSet>
+}
+else if (_variants.Count == 1)
+{
+    <MudText Typo="Typo.h5" Color="Color.Primary" Class="mb-2">
+        $@_variants[0].Price.ToString("F2")
+    </MudText>
+}
+
+<MudDivider Class="my-3" />
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+    <MudText Typo="Typo.subtitle2">Quantity</MudText>
+    <MudSpacer />
+    <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
+                   Color="Color.Primary" Disabled="@(_quantity <= 1)"
+                   OnClick="() => _quantity--" />
+    <MudText Typo="Typo.h6" Style="min-width: 32px; text-align: center;">@_quantity</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                   Color="Color.Primary" Disabled="@(_quantity >= 20)"
+                   OnClick="() => _quantity++" />
+</MudStack>
+
+<MudTextField T="string" @bind-Value="_notes" Label="Special instructions (optional)"
+              Variant="Variant.Outlined" Lines="2" Class="mt-3" />
+
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-3" Justify="Justify.FlexEnd">
+    <MudButton Color="Color.Primary" Variant="Variant.Filled"
+               Disabled="@(_selectedVariant is null)"
+               OnClick="AddToCart">
+        Add to Cart — $@((_selectedVariant?.Price * _quantity ?? 0).ToString("F2"))
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter] public MenuItemDto MenuItem { get; set; } = default!;
+    [Parameter] public EventCallback OnItemAdded { get; set; }
+
+    private List<MenuItemVariantDto> _variants = [];
+    private Guid _selectedVariantId;
+    private MenuItemVariantDto? _selectedVariant;
+    private int _quantity = 1;
+    private string? _notes;
+
+    protected override void OnParametersSet()
+    {
+        _variants = MenuItem.Variants
+            .Where(v => v.Active)
+            .OrderBy(v => v.SortOrder)
+            .ToList();
+
+        if (_variants.Count > 0)
+        {
+            _selectedVariantId = _variants[0].Id;
+            _selectedVariant = _variants[0];
+        }
+    }
+
+    private void OnVariantSelected(Guid variantId)
+    {
+        _selectedVariantId = variantId;
+        _selectedVariant = _variants.FirstOrDefault(v => v.Id == variantId);
+    }
+
+    private async Task AddToCart()
+    {
+        if (_selectedVariant is null) return;
+
+        Cart.AddItem(new CartItem
+        {
+            MenuItem = MenuItem,
+            Variant = _selectedVariant,
+            Quantity = _quantity,
+            Notes = _notes
+        });
+
+        Snackbar.Add($"{MenuItem.Name} added to cart!", Severity.Success);
+
+        // Reset state
+        _quantity = 1;
+        _notes = null;
+
+        await OnItemAdded.InvokeAsync();
+    }
+}
