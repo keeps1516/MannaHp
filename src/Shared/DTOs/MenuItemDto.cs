@@ -1,14 +1,15 @@
 ﻿namespace MannaHp.Shared.DTOs;
 
 public record MenuItemDto(Guid Id, Guid CategoryId, string Name, string? Description,
-				string? ImageUrl, bool IsCustomizable, bool Active, int SortOrder,
-				List<MenuItemVariantDto> Variants,
+				string? ImageUrl, bool ImageApproximate, bool IsCustomizable, bool Active,
+				int SortOrder, List<MenuItemVariantDto> Variants,
 				List<AvailableIngredientDto>? AvailableIngredients);
 
 public record CreateMenuItemRequest(Guid CategoryId, string Name, string? Description,
-			   string? ImageUrl, bool IsCustomizable, int SortOrder);
+			   string? ImageUrl, bool ImageApproximate, bool IsCustomizable, int SortOrder);
 public record UpdateMenuItemRequest(string Name, string? Description, string? ImageUrl,
-				bool IsCustomizable, Guid CategoryId, int SortOrder, bool Active);
+				bool ImageApproximate, bool IsCustomizable, Guid CategoryId, int SortOrder,
+				bool Active);
 
 public record MenuItemVariantDto(Guid Id, string Name, decimal Price, int SortOrder, bool Active);
 public record CreateVariantRequest(string Name, decimal Price, int SortOrder);

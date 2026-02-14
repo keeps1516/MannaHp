@@ -20,7 +20,7 @@ public static class MenuItemEndpoints
                     .ThenInclude(a => a.Ingredient)
                 .Select(m => new MenuItemDto(
                     m.Id, m.Categoryid, m.Name, m.Description, m.ImageUrl,
-                    m.IsCustomizable, m.Active, m.SortOrder,
+                    m.ImageApproximate, m.IsCustomizable, m.Active, m.SortOrder,
                     m.Variants.OrderBy(v => v.Sortorder).Select(v =>
                         new MenuItemVariantDto(v.Id, v.Name, v.Price, v.Sortorder, v.Active)).ToList(),
                     m.AvailableIngredients.Any()
@@ -43,7 +43,7 @@ public static class MenuItemEndpoints
 
             return Results.Ok(new MenuItemDto(
                 m.Id, m.Categoryid, m.Name, m.Description, m.ImageUrl,
-                m.IsCustomizable, m.Active, m.SortOrder,
+                m.ImageApproximate, m.IsCustomizable, m.Active, m.SortOrder,
                 m.Variants.OrderBy(v => v.Sortorder).Select(v =>
                     new MenuItemVariantDto(v.Id, v.Name, v.Price, v.Sortorder, v.Active)).ToList(),
                 m.AvailableIngredients.Any()
@@ -69,6 +69,7 @@ public static class MenuItemEndpoints
                 Name = req.Name,
                 Description = req.Description,
                 ImageUrl = req.ImageUrl,
+                ImageApproximate = req.ImageApproximate,
                 IsCustomizable = req.IsCustomizable,
                 SortOrder = req.SortOrder,
                 Active = true
@@ -77,8 +78,8 @@ public static class MenuItemEndpoints
             await db.SaveChangesAsync();
             return Results.Created($"/api/menu-items/{menuItem.Id}",
                 new MenuItemDto(menuItem.Id, menuItem.Categoryid, menuItem.Name,
-                    menuItem.Description, menuItem.ImageUrl, menuItem.IsCustomizable,
-                    menuItem.Active, menuItem.SortOrder, [],
+                    menuItem.Description, menuItem.ImageUrl, menuItem.ImageApproximate,
+                    menuItem.IsCustomizable, menuItem.Active, menuItem.SortOrder, [],
                     menuItem.IsCustomizable ? [] : null));
         }).AddEndpointFilter<ValidationFilter<CreateMenuItemRequest>>();
 
@@ -97,14 +98,15 @@ public static class MenuItemEndpoints
             menuItem.Name = req.Name;
             menuItem.Description = req.Description;
             menuItem.ImageUrl = req.ImageUrl;
+            menuItem.ImageApproximate = req.ImageApproximate;
             menuItem.IsCustomizable = req.IsCustomizable;
             menuItem.Categoryid = req.CategoryId;
             menuItem.SortOrder = req.SortOrder;
             menuItem.Active = req.Active;
             await db.SaveChangesAsync();
             return Results.Ok(new MenuItemDto(menuItem.Id, menuItem.Categoryid, menuItem.Name,
-                menuItem.Description, menuItem.ImageUrl, menuItem.IsCustomizable,
-                menuItem.Active, menuItem.SortOrder, [],
+                menuItem.Description, menuItem.ImageUrl, menuItem.ImageApproximate,
+                menuItem.IsCustomizable, menuItem.Active, menuItem.SortOrder, [],
                 menuItem.IsCustomizable ? [] : null));
         }).AddEndpointFilter<ValidationFilter<UpdateMenuItemRequest>>();
 

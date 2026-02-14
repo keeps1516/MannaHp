@@ -146,6 +146,11 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
             sizes="(max-width: 768px) 100vw, 768px"
             priority
           />
+          {menuItem.imageApproximate && (
+            <span className="absolute bottom-2 right-2 text-[10px] text-white/70 bg-black/50 px-2 py-0.5 rounded-full">
+              Not an accurate image
+            </span>
+          )}
         </div>
       )}
 
