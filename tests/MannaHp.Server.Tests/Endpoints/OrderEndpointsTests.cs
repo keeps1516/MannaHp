@@ -163,6 +163,87 @@ public class OrderEndpointsTests
         order.Items[0].Ingredients!.Should().Contain(i => i.IngredientName == "Chicken" && i.PriceCharged == 3.00m);
     }
 
+    // ── POST — Duplicate ingredient IDs (qty > 1 of same ingredient) ─
+
+    [Fact]
+    public async Task Post_Bowl_DuplicateIngredientIds_Succeeds()
+    {
+        // 2× Rice ($3.00 each) — sends same available-ingredient ID twice
+        var response = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice, AvailRice]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_Bowl_DuplicateIngredientIds_DoublesPriceCorrectly()
+    {
+        // 2× Rice ($3.00 each) = $6.00 unit price
+        var response = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice, AvailRice]));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        order!.Items[0].UnitPrice.Should().Be(6.00m);
+        order.Items[0].TotalPrice.Should().Be(6.00m);
+    }
+
+    [Fact]
+    public async Task Post_Bowl_DuplicateIngredientIds_CreatesMultipleIngredientRecords()
+    {
+        // 2× Rice should produce 2 ingredient records, not 1
+        var response = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice, AvailRice]));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        order!.Items[0].Ingredients.Should().NotBeNull();
+        order.Items[0].Ingredients!.Should().HaveCount(2);
+        order.Items[0].Ingredients!.Should().OnlyContain(i => i.IngredientName == "Jasmine Rice" && i.PriceCharged == 3.00m);
+    }
+
+    [Fact]
+    public async Task Post_Bowl_MixedDuplicateIngredients_CorrectTotal()
+    {
+        // 2× Rice ($3.00) + 1× Chicken ($3.00) = $9.00
+        var response = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice, AvailRice, AvailChicken]));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        order!.Items[0].UnitPrice.Should().Be(9.00m);
+        order.Items[0].Ingredients.Should().NotBeNull();
+        order.Items[0].Ingredients!.Should().HaveCount(3);
+        order.Items[0].Ingredients!.Count(i => i.IngredientName == "Jasmine Rice").Should().Be(2);
+        order.Items[0].Ingredients!.Count(i => i.IngredientName == "Chicken").Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Post_Bowl_DuplicateIngredients_Qty2_CorrectLineTotal()
+    {
+        // 2× Rice ($3.00 each) × 2 bowls = $12.00 line total
+        var response = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice, AvailRice], qty: 2));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        order!.Items[0].UnitPrice.Should().Be(6.00m);
+        order.Items[0].TotalPrice.Should().Be(12.00m);
+    }
+
+    [Fact]
+    public async Task Post_Bowl_TripleSameIngredient_TriplesPriceCorrectly()
+    {
+        // 3× Lettuce ($0.50 each) = $1.50
+        var response = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailLettuce, AvailLettuce, AvailLettuce]));
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        order!.Items[0].UnitPrice.Should().Be(1.50m);
+        order.Items[0].Ingredients!.Should().HaveCount(3);
+    }
+
     // ── POST — Mixed order with tax ─────────────────────────────────
 
     [Fact]
