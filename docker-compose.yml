@@ -3,13 +3,48 @@ services:
     image: postgres:16
     container_name: manna-postgres
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: restaurant
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: devpassword123
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword123}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d restaurant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Server/Dockerfile
+    container_name: manna-api
+    ports:
+      - "${API_PORT:-5082}:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=restaurant;Username=app;Password=${DB_PASSWORD:-devpassword123}"
+      Jwt__Key: "${JWT_KEY:-dev-secret-key-for-local-development-only-32chars!!}"
+      Jwt__Issuer: MannaHp
+      Jwt__Audience: MannaHp
+      Jwt__ExpiresInMinutes: "1440"
+      CorsOrigins: "http://localhost:${NEXT_PORT:-3000},http://next-client:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  next-client:
+    build:
+      context: src/next-client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5082}
+    container_name: manna-next
+    ports:
+      - "${NEXT_PORT:-3000}:3000"
+    depends_on:
+      - api
 
 volumes:
   pgdata:

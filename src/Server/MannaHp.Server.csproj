@@ -6,23 +6,41 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Docker'">
+    <DefineConstants>$(DefineConstants);DOCKER</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Exclude Blazor component files in Docker builds -->
+  <ItemGroup Condition="'$(Configuration)' == 'Docker'">
+    <Content Remove="Components\**" />
+    <None Remove="Components\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="MudBlazor" Version="8.15.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- Blazor/MudBlazor packages - excluded in Docker builds -->
+  <ItemGroup Condition="'$(Configuration)' != 'Docker'">
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.2" />
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+  </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\Client\MannaHp.Client.csproj" />
     <ProjectReference Include="..\Shared\MannaHp.Shared.csproj" />
+  </ItemGroup>
+
+  <!-- Blazor Client project - excluded in Docker builds -->
+  <ItemGroup Condition="'$(Configuration)' != 'Docker'">
+    <ProjectReference Include="..\Client\MannaHp.Client.csproj" />
   </ItemGroup>
 
 </Project>
