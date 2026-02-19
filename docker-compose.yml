@@ -14,7 +14,8 @@ services:
       test: ["CMD-SHELL", "pg_isready -U app -d restaurant"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 12
+      start_period: 30s
 
   api:
     build:
@@ -29,7 +30,7 @@ services:
       Jwt__Issuer: MannaHp
       Jwt__Audience: MannaHp
       Jwt__ExpiresInMinutes: "1440"
-      CorsOrigins: "http://localhost:${NEXT_PORT:-3000},http://next-client:3000"
+      CorsOrigins: "${CORS_ORIGINS:-http://localhost:3000,http://next-client:3000}"
     depends_on:
       postgres:
         condition: service_healthy
