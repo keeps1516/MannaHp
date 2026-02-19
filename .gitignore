@@ -1,6 +1,8 @@
 ## Build output
 [Bb]in/
 [Oo]bj/
+publish/
+TestResults/
 
 ## Visual Studio
 .vs/
@@ -23,13 +25,19 @@ secrets.json
 **/[Pp]ackages/*
 !**/[Pp]ackages/build/
 
+## Node / Next.js
+node_modules/
+.next/
+out/
+
 ## OS files
 .DS_Store
 Thumbs.db
+nul
 
 ## Env / secrets
 .env
-*.env
 appsettings.*.local.json
-/node_modules/.bin
-node_modules
+
+## Docker
+docker-compose.override.yml
