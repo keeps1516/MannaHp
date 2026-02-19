@@ -236,6 +236,13 @@ export interface UpdateRecipeIngredientRequest {
   quantity: number;
 }
 
+// Response for order creation — includes Stripe client secret for card payments
+export interface CreateOrderResponse {
+  order: OrderDto;
+  clientSecret: string | null;
+  stripePublishableKey: string | null;
+}
+
 // ── Order Mutations ──
 
 export interface UpdateOrderStatusRequest {

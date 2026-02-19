@@ -1,9 +1,5 @@
 using System.Text;
 using FluentValidation;
-#if !DOCKER
-using MannaHp.Client.Services;
-using MannaHp.Server.Components;
-#endif
 using MannaHp.Server.Data;
 using MannaHp.Server.Endpoints;
 using MannaHp.Server.Hubs;
@@ -13,9 +9,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-#if !DOCKER
-using MudBlazor.Services;
-#endif
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,15 +25,6 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-
-#if !DOCKER
-// Blazor services
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents()
-    .AddInteractiveWebAssemblyComponents();
-
-builder.Services.AddMudServices();
-#endif
 
 // EF Core + PostgreSQL
 builder.Services.AddDbContext<MannaDbContext>(options =>
@@ -91,41 +75,18 @@ builder.Services.AddAuthorizationBuilder()
 
 builder.Services.AddSingleton<TokenService>();
 
+// Stripe
+builder.Services.AddSingleton<StripeService>();
+
 // SignalR for real-time order updates
 builder.Services.AddSignalR();
 
-#if !DOCKER
-// Client services (needed during server-side prerendering)
-builder.Services.AddScoped<MenuService>();
-builder.Services.AddScoped<CartService>();
-builder.Services.AddScoped<OrderService>();
-
-// HttpClient for server-side rendering (calls back to own API)
-builder.Services.AddScoped(sp =>
-{
-    var navigationManager = sp.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>();
-    return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
-});
-#endif
-
 var app = builder.Build();
-
-#if !DOCKER
-if (app.Environment.IsDevelopment())
-{
-    app.UseWebAssemblyDebugging();
-}
-#endif
 
 app.UseCors("NextClient");
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-#if !DOCKER
-app.MapStaticAssets();
-app.UseAntiforgery();
-#endif
 
 // Apply pending migrations at startup
 using (var scope = app.Services.CreateScope())
@@ -163,17 +124,10 @@ app.MapVariantEndpoints();
 app.MapAvailableIngredientEndpoints();
 app.MapRecipeIngredientEndpoints();
 app.MapOrderEndpoints();
+app.MapStripeWebhookEndpoints();
 
 // SignalR hubs
 app.MapHub<OrderHub>("/hubs/orders");
-
-#if !DOCKER
-// Blazor
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
-    .AddInteractiveWebAssemblyRenderMode()
-    .AddAdditionalAssemblies(typeof(MannaHp.Client._Imports).Assembly);
-#endif
 
 app.Run();
 

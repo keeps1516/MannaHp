@@ -1,6 +1,7 @@
 using MannaHp.Server.Data;
 using MannaHp.Server.Filters;
 using MannaHp.Server.Hubs;
+using MannaHp.Server.Services;
 using MannaHp.Shared.DTOs;
 using MannaHp.Shared.Entities;
 using MannaHp.Shared.Enums;
@@ -17,7 +18,7 @@ public static class OrderEndpoints
 
         // POST — place an order
         group.MapPost("/", async (CreateOrderRequest req, MannaDbContext db,
-            IHubContext<OrderHub> hub) =>
+            IHubContext<OrderHub> hub, StripeService stripe) =>
         {
             var taxRate = 0.0825m; // TODO: pull from app_settings table
 
@@ -64,7 +65,6 @@ public static class OrderEndpoints
                 }
 
                 // Step 2: If ingredients are selected, look them up and add their prices
-                // Note: duplicates are intentional — e.g. 2x rice sends the same ID twice
                 if (itemReq.SelectedIngredientIds?.Count > 0)
                 {
                     var uniqueIds = itemReq.SelectedIngredientIds.Distinct().ToList();
@@ -81,10 +81,8 @@ public static class OrderEndpoints
                             ["SelectedIngredientIds"] = ["One or more selected ingredients are invalid"]
                         });
 
-                    // Build a lookup for quick access
                     var ingredientLookup = availableIngredients.ToDictionary(a => a.Id);
 
-                    // Create one OrderItemIngredient per occurrence (handles qty > 1 of same ingredient)
                     foreach (var selectedId in itemReq.SelectedIngredientIds)
                     {
                         if (!ingredientLookup.TryGetValue(selectedId, out var avail)) continue;
@@ -96,7 +94,6 @@ public static class OrderEndpoints
                         });
                     }
 
-                    // Total price = sum across ALL occurrences (not just unique)
                     unitPrice += itemReq.SelectedIngredientIds
                         .Where(id => ingredientLookup.ContainsKey(id))
                         .Sum(id => ingredientLookup[id].CustomerPrice);
@@ -110,7 +107,6 @@ public static class OrderEndpoints
                     });
 
                 orderItem.UnitPrice = unitPrice;
-
                 orderItem.TotalPrice = orderItem.UnitPrice * orderItem.Quantity;
                 order.Items.Add(orderItem);
             }
@@ -119,6 +115,16 @@ public static class OrderEndpoints
             order.Tax = Math.Round(order.Subtotal * taxRate, 2);
             order.TaxRate = taxRate;
             order.Total = order.Subtotal + order.Tax;
+
+            // For card payments, create a Stripe PaymentIntent
+            string? clientSecret = null;
+            if (req.PaymentMethod == PaymentMethod.Card)
+            {
+                var paymentIntent = await stripe.CreatePaymentIntentAsync(
+                    order.Total, "Manna order");
+                order.StripePaymentId = paymentIntent.Id;
+                clientSecret = paymentIntent.ClientSecret;
+            }
 
             db.Orders.Add(order);
             await db.SaveChangesAsync();
@@ -132,11 +138,66 @@ public static class OrderEndpoints
 
             var dto = MapToDto(saved);
 
-            // Broadcast to kitchen via SignalR
-            await hub.Clients.Group("kitchen").SendAsync("OrderCreated", dto);
+            // For in-store orders, broadcast to kitchen immediately
+            // For card orders, wait until payment is confirmed
+            if (req.PaymentMethod == PaymentMethod.InStore)
+            {
+                await hub.Clients.Group("kitchen").SendAsync("OrderCreated", dto);
+            }
 
-            return Results.Created($"/api/orders/{order.Id}", dto);
+            return Results.Created($"/api/orders/{order.Id}",
+                new CreateOrderResponse(dto, clientSecret,
+                    req.PaymentMethod == PaymentMethod.Card ? stripe.PublishableKey : null));
         }).AddEndpointFilter<ValidationFilter<CreateOrderRequest>>();
+
+        // POST — confirm payment (client calls after Stripe.confirmPayment succeeds)
+        group.MapPost("/{id:guid}/confirm-payment", async (Guid id, MannaDbContext db,
+            StripeService stripe, IHubContext<OrderHub> hub) =>
+        {
+            var order = await db.Orders
+                .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
+                .Include(o => o.Items).ThenInclude(oi => oi.Variant)
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order is null) return Results.NotFound();
+            if (order.PaymentStatus == PaymentStatus.Paid)
+                return Results.Ok(MapToDto(order));
+            if (string.IsNullOrEmpty(order.StripePaymentId))
+                return Results.BadRequest(new { error = "No payment intent associated with this order" });
+
+            var paymentIntent = await stripe.GetPaymentIntentAsync(order.StripePaymentId);
+
+            if (paymentIntent.Status == "succeeded")
+            {
+                order.PaymentStatus = PaymentStatus.Paid;
+
+                // Extract card details from the charge
+                if (!string.IsNullOrEmpty(paymentIntent.LatestChargeId))
+                {
+                    var charge = await stripe.GetChargeAsync(paymentIntent.LatestChargeId);
+                    order.CardBrand = charge.PaymentMethodDetails?.Card?.Brand;
+                    order.CardLast4 = charge.PaymentMethodDetails?.Card?.Last4;
+                }
+
+                order.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+
+                // Now broadcast to kitchen
+                var dto = MapToDto(order);
+                await hub.Clients.Group("kitchen").SendAsync("OrderCreated", dto);
+                return Results.Ok(dto);
+            }
+
+            if (paymentIntent.Status is "requires_payment_method" or "canceled")
+            {
+                order.PaymentStatus = PaymentStatus.Failed;
+                order.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+            }
+
+            return Results.Ok(MapToDto(order));
+        });
 
         // GET by id
         group.MapGet("/{id:guid}", async (Guid id, MannaDbContext db) =>
