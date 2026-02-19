@@ -127,6 +127,13 @@ app.MapStaticAssets();
 app.UseAntiforgery();
 #endif
 
+// Apply pending migrations at startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MannaDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Seed owner account at startup
 using (var scope = app.Services.CreateScope())
 {
