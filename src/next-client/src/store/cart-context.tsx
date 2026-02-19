@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { CartItem } from "@/types/cart";
 import { getLineTotal } from "@/types/cart";
+import { generateId } from "@/lib/utils";
 
 const TAX_RATE = 0.0825;
 
@@ -27,7 +28,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return {
         items: [
           ...state.items,
-          { ...action.payload, id: crypto.randomUUID() },
+          { ...action.payload, id: generateId() },
         ],
       };
     case "REMOVE_ITEM":

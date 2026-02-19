@@ -8,6 +8,7 @@ import { PaymentMethod } from "@/types/api";
 import type { MenuItemDto, CategoryDto } from "@/types/api";
 import type { CartItem } from "@/types/cart";
 import { getLineTotal } from "@/types/cart";
+import { generateId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { VisuallyHidden } from "radix-ui";
@@ -48,7 +49,7 @@ export default function SubmitOrderPage() {
     (item: Omit<CartItem, "id">) => {
       setOrderItems((prev) => [
         ...prev,
-        { ...item, id: crypto.randomUUID() },
+        { ...item, id: generateId() },
       ]);
       toast.success(`Added ${item.menuItem.name}`);
     },
