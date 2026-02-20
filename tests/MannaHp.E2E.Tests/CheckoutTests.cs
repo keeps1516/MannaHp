@@ -4,16 +4,9 @@ using Microsoft.Playwright;
 
 namespace MannaHp.E2E.Tests;
 
-[Collection("E2E")]
+[TestFixture]
 public class CheckoutTests
 {
-    private readonly E2EFixture _fixture;
-
-    public CheckoutTests(E2EFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
     // ── Helpers ─────────────────────────────────────────────────────
 
     /// <summary>
@@ -21,10 +14,10 @@ public class CheckoutTests
     /// opens the Latte item, selects a size, and adds it to the cart.
     /// Returns the page with an item in the cart ready for checkout.
     /// </summary>
-    private async Task<IPage> AddLatteToCartAsync()
+    private static async Task<IPage> AddLatteToCartAsync()
     {
-        var page = await _fixture.CreatePageAsync();
-        await page.GotoAsync(_fixture.NextBaseUrl);
+        var page = await E2EFixture.CreatePageAsync();
+        await page.GotoAsync(E2EFixture.NextBaseUrl);
 
         // Wait for menu categories to load
         await page.WaitForSelectorAsync("text=Traditional Drinks");
@@ -62,7 +55,7 @@ public class CheckoutTests
 
     // ── Tests ───────────────────────────────────────────────────────
 
-    [Fact]
+    [Test]
     public async Task CartDrawer_ShowsPayWithCardAndPayInStore_Buttons()
     {
         var page = await AddLatteToCartAsync();
@@ -76,7 +69,7 @@ public class CheckoutTests
         await Expect(inStoreButton).ToBeVisibleAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task CartDrawer_ShowsItemWithCorrectPrice()
     {
         var page = await AddLatteToCartAsync();
@@ -90,7 +83,7 @@ public class CheckoutTests
         cartContent.Should().Contain("4.75");
     }
 
-    [Fact]
+    [Test]
     public async Task PayWithCard_NavigatesToCheckoutPage()
     {
         var page = await AddLatteToCartAsync();
@@ -104,7 +97,7 @@ public class CheckoutTests
         page.Url.Should().Contain("/checkout");
     }
 
-    [Fact]
+    [Test]
     public async Task CheckoutPage_ShowsOrderSummary()
     {
         var page = await AddLatteToCartAsync();
@@ -126,7 +119,7 @@ public class CheckoutTests
         content.Should().Contain("Total");
     }
 
-    [Fact]
+    [Test]
     public async Task CheckoutPage_ShowsPaymentDetailsSection()
     {
         var page = await AddLatteToCartAsync();
@@ -142,7 +135,7 @@ public class CheckoutTests
         content.Should().Contain("Payments processed securely by Stripe");
     }
 
-    [Fact]
+    [Test]
     public async Task CheckoutPage_ShowsBackToCartButton()
     {
         var page = await AddLatteToCartAsync();
@@ -155,7 +148,7 @@ public class CheckoutTests
         await Expect(backButton).ToBeVisibleAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task PayInStore_PlacesOrderAndShowsConfirmation()
     {
         var page = await AddLatteToCartAsync();
@@ -179,7 +172,7 @@ public class CheckoutTests
         content.Should().Contain("Latte");
     }
 
-    [Fact]
+    [Test]
     public async Task PayInStore_RapidDoubleClick_OnlyCreatesOneOrder()
     {
         var page = await AddLatteToCartAsync();
@@ -209,20 +202,20 @@ public class CheckoutTests
         orderPostCount.Should().Be(1);
     }
 
-    [Fact]
+    [Test]
     public async Task CheckoutPage_EmptyCart_RedirectsToHome()
     {
-        var page = await _fixture.CreatePageAsync();
+        var page = await E2EFixture.CreatePageAsync();
 
         // Navigate directly to /checkout without any items in cart
-        await page.GotoAsync($"{_fixture.NextBaseUrl}/checkout");
+        await page.GotoAsync($"{E2EFixture.NextBaseUrl}/checkout");
 
         // Should redirect back to the home page
-        await page.WaitForURLAsync(_fixture.NextBaseUrl + "/", new() { Timeout = 10_000 });
+        await page.WaitForURLAsync(E2EFixture.NextBaseUrl + "/", new() { Timeout = 10_000 });
         page.Url.Should().NotContain("/checkout");
     }
 
-    [Fact]
+    [Test]
     public async Task OrderConfirmation_ShowsOrderAgainButton()
     {
         var page = await AddLatteToCartAsync();
@@ -237,7 +230,7 @@ public class CheckoutTests
 
         // Clicking it should navigate back to home
         await orderAgainButton.ClickAsync();
-        await page.WaitForURLAsync(_fixture.NextBaseUrl + "/", new() { Timeout = 10_000 });
+        await page.WaitForURLAsync(E2EFixture.NextBaseUrl + "/", new() { Timeout = 10_000 });
     }
 
     // ── Playwright Expect helper ──

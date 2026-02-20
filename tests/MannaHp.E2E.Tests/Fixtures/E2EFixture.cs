@@ -14,7 +14,8 @@ namespace MannaHp.E2E.Tests.Fixtures;
 ///   - Node.js / npm available in PATH
 ///   - Playwright browsers installed: pwsh bin/.../playwright.ps1 install
 /// </summary>
-public class E2EFixture : IAsyncLifetime
+[SetUpFixture]
+public class E2EFixture
 {
     private const string TestConnectionString =
         "Host=localhost;Port=5432;Database=restaurant_e2e;Username=app;Password=devpassword123";
@@ -22,20 +23,18 @@ public class E2EFixture : IAsyncLifetime
     public const int ApiPort = 5099;
     public const int NextPort = 3099;
 
-    public string ApiBaseUrl => $"http://localhost:{ApiPort}";
-    public string NextBaseUrl => $"http://localhost:{NextPort}";
+    public static string ApiBaseUrl => $"http://localhost:{ApiPort}";
+    public static string NextBaseUrl => $"http://localhost:{NextPort}";
 
     private Process? _apiProcess;
     private Process? _nextProcess;
-    private IPlaywright? _playwright;
-    private IBrowser? _browser;
+    private static IPlaywright? _playwright;
+    private static IBrowser? _browser;
 
-    private static string RepoRoot =>
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
-    private static string ServerProjectDir => Path.Combine(RepoRoot, "src", "Server");
-    private static string NextClientDir => Path.Combine(RepoRoot, "src", "next-client");
+    public static IBrowser Browser => _browser!;
 
-    public async ValueTask InitializeAsync()
+    [OneTimeSetUp]
+    public async Task SetUp()
     {
         // 1. Prepare the test database
         await PrepareDatabaseAsync();
@@ -84,7 +83,7 @@ public class E2EFixture : IAsyncLifetime
     /// <summary>
     /// Creates a fresh Playwright page in an isolated browser context.
     /// </summary>
-    public async Task<IPage> CreatePageAsync()
+    public static async Task<IPage> CreatePageAsync()
     {
         var context = await _browser!.NewContextAsync();
         var page = await context.NewPageAsync();
@@ -92,7 +91,8 @@ public class E2EFixture : IAsyncLifetime
         return page;
     }
 
-    public async ValueTask DisposeAsync()
+    [OneTimeTearDown]
+    public async Task TearDown()
     {
         if (_browser is not null) await _browser.DisposeAsync();
         _playwright?.Dispose();
@@ -109,6 +109,11 @@ public class E2EFixture : IAsyncLifetime
     }
 
     // ── Helpers ────────────────────────────────────────────────────
+
+    private static string RepoRoot =>
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
+    private static string ServerProjectDir => Path.Combine(RepoRoot, "src", "Server");
+    private static string NextClientDir => Path.Combine(RepoRoot, "src", "next-client");
 
     private static async Task PrepareDatabaseAsync()
     {
