@@ -34,6 +34,11 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 options.UseNpgsql(TestConnectionString,
                     npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
         });
+
+        // Provide dummy Stripe config so StripeService doesn't throw
+        builder.UseSetting("Stripe:SecretKey", "sk_test_fake_key_for_tests");
+        builder.UseSetting("Stripe:PublishableKey", "pk_test_fake_key_for_tests");
+        builder.UseSetting("Stripe:WebhookSecret", "whsec_fake_secret_for_tests");
     }
 
     public async ValueTask InitializeAsync()

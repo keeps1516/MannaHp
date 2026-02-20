@@ -1,8 +1,5 @@
 <Solution>
   <Folder Name="/src/" />
-  <Folder Name="/src/Client/">
-    <Project Path="src/Client/MannaHp.Client.csproj" />
-  </Folder>
   <Folder Name="/src/PrintAgent/">
     <Project Path="src/PrintAgent/MannaHp.PrintAgent.csproj" />
   </Folder>
@@ -16,10 +13,10 @@
   <Folder Name="/tests/MannaHp.Shared.Tests/">
     <Project Path="tests/MannaHp.Shared.Tests/MannaHp.Shared.Tests.csproj" />
   </Folder>
-  <Folder Name="/tests/MannaHp.Client.Tests/">
-    <Project Path="tests/MannaHp.Client.Tests/MannaHp.Client.Tests.csproj" />
-  </Folder>
-  <Folder Name="/tests/MannaHp.Server.Tests/">
+<Folder Name="/tests/MannaHp.Server.Tests/">
     <Project Path="tests/MannaHp.Server.Tests/MannaHp.Server.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/MannaHp.E2E.Tests/">
+    <Project Path="tests/MannaHp.E2E.Tests/MannaHp.E2E.Tests.csproj" />
   </Folder>
 </Solution>
