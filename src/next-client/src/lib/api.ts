@@ -3,6 +3,7 @@ import type {
   MenuItemDto,
   OrderDto,
   CreateOrderRequest,
+  CreateOrderResponse,
 } from "@/types/api";
 
 const API_BASE =
@@ -26,8 +27,12 @@ export const api = {
   getMenuItem: (id: string) => fetchApi<MenuItemDto>(`/api/menu-items/${id}`),
   getOrder: (id: string) => fetchApi<OrderDto>(`/api/orders/${id}`),
   createOrder: (req: CreateOrderRequest) =>
-    fetchApi<OrderDto>("/api/orders", {
+    fetchApi<CreateOrderResponse>("/api/orders", {
       method: "POST",
       body: JSON.stringify(req),
+    }),
+  confirmPayment: (orderId: string) =>
+    fetchApi<OrderDto>(`/api/orders/${orderId}/confirm-payment`, {
+      method: "POST",
     }),
 };

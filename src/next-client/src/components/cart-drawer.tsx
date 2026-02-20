@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Trash2 } from "lucide-react";
+import { ShoppingCart, Trash2, CreditCard, Store } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -44,7 +44,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
     if (cart.items.length === 0) return;
     setPlacing(true);
     try {
-      const order = await api.createOrder({
+      const response = await api.createOrder({
         paymentMethod: PaymentMethod.InStore,
         notes: null,
         items: cart.items.map((item) => ({
@@ -59,13 +59,18 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
       });
       cart.clear();
       onOpenChange(false);
-      pendingOrderIdRef.current = order.id;
+      pendingOrderIdRef.current = response.order.id;
       setShowVideo(true);
     } catch {
       toast.error("Failed to place order. Please try again.");
     } finally {
       setPlacing(false);
     }
+  }
+
+  function handlePayWithCard() {
+    onOpenChange(false);
+    router.push("/checkout");
   }
 
   return (
@@ -146,14 +151,34 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                 <span className="text-white">Total</span>
                 <span className="text-[#00e5ff]">${cart.total.toFixed(2)}</span>
               </div>
-              <Button
-                className="w-full mt-2 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
-                size="lg"
-                onClick={handlePlaceOrder}
-                disabled={placing}
-              >
-                {placing ? "Placing Order..." : "Place Order"}
-              </Button>
+
+              <div className="flex gap-2 mt-2">
+                <Button
+                  className="flex-1 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
+                  size="lg"
+                  onClick={handlePayWithCard}
+                  disabled={placing}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Pay with Card
+                </Button>
+                <Button
+                  className="flex-1 bg-white/10 text-white hover:bg-white/20 font-semibold border border-white/20"
+                  variant="outline"
+                  size="lg"
+                  onClick={handlePlaceOrder}
+                  disabled={placing}
+                >
+                  {placing ? (
+                    "Placing..."
+                  ) : (
+                    <>
+                      <Store className="h-4 w-4 mr-2" />
+                      Pay In-Store
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </>
         )}

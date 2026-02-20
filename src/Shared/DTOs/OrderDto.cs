@@ -46,5 +46,11 @@ public record OrderItemIngredientDto(
 	UnitOfMeasure IngredientUnit,
 	decimal PriceCharged);
 
+// Response for order creation — includes Stripe client secret for card payments
+public record CreateOrderResponse(
+	OrderDto Order,
+	string? ClientSecret,
+	string? StripePublishableKey);
+
 // For status updates (kitchen staff)
 public record UpdateOrderStatusRequest(OrderStatus Status);
