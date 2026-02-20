@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
@@ -22,6 +22,7 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const orderCreatedRef = useRef(false);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -30,9 +31,11 @@ export default function CheckoutPage() {
     }
   }, [cart.items.length, orderId, router]);
 
-  // Create the order + PaymentIntent on mount
+  // Create the order + PaymentIntent on mount (once only)
   useEffect(() => {
     if (cart.items.length === 0) return;
+    if (orderCreatedRef.current) return;
+    orderCreatedRef.current = true;
 
     let cancelled = false;
 
