@@ -17,7 +17,7 @@ namespace MannaHp.E2E.Tests.Fixtures;
 [SetUpFixture]
 public class E2EFixture
 {
-    private const string TestConnectionString =
+    public const string TestConnectionString =
         "Host=localhost;Port=5432;Database=restaurant_e2e;Username=app;Password=devpassword123";
 
     public const int ApiPort = 5099;

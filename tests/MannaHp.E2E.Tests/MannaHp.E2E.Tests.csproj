@@ -13,9 +13,11 @@
     <PackageReference Include="NUnit" Version="4.*" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.*" />
     <PackageReference Include="FluentAssertions" Version="8.*" />
+    <PackageReference Include="UglyToad.PdfPig" Version="0.*" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Server\MannaHp.Server.csproj" />
+    <ProjectReference Include="..\..\src\PrintAgent\MannaHp.PrintAgent.csproj" />
   </ItemGroup>
 </Project>
