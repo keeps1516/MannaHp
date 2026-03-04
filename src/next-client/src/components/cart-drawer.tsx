@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingCart, Trash2, CreditCard, Store } from "lucide-react";
 import {
@@ -31,6 +31,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
   const [showVideo, setShowVideo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const pendingOrderIdRef = useRef<string | null>(null);
+  const submittingRef = useRef(false);
 
   const finishOrder = useCallback(() => {
     setShowVideo(false);
@@ -40,8 +41,11 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
     }
   }, [router]);
 
-  async function handlePlaceOrder() {
+  async function handlePlaceOrder(e?: MouseEvent) {
+    e?.preventDefault();
     if (cart.items.length === 0) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setPlacing(true);
     try {
       const response = await api.createOrder({
@@ -65,6 +69,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
       toast.error("Failed to place order. Please try again.");
     } finally {
       setPlacing(false);
+      submittingRef.current = false;
     }
   }
 

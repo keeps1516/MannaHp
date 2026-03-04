@@ -61,7 +61,7 @@ public class OrderEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte12));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items.Should().HaveCount(1);
         order.Items[0].UnitPrice.Should().Be(4.75m);
         order.Items[0].TotalPrice.Should().Be(4.75m);
@@ -74,7 +74,7 @@ public class OrderEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte16));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(5.25m);
     }
 
@@ -85,7 +85,7 @@ public class OrderEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte12, qty: 2));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(4.75m);
         order.Items[0].TotalPrice.Should().Be(9.50m);
     }
@@ -110,7 +110,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailChicken, AvailLettuce]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(6.50m);
         order.Items[0].TotalPrice.Should().Be(6.50m);
     }
@@ -123,7 +123,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailBeans, AvailChicken, AvailLettuce, AvailSalsa, AvailCheese]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(9.50m);
     }
 
@@ -135,7 +135,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailChicken], qty: 2));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(6.00m);
         order.Items[0].TotalPrice.Should().Be(12.00m);
     }
@@ -156,7 +156,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailChicken]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].Ingredients.Should().NotBeNull();
         order.Items[0].Ingredients!.Should().HaveCount(2);
         order.Items[0].Ingredients!.Should().Contain(i => i.IngredientName == "Jasmine Rice" && i.PriceCharged == 3.00m);
@@ -183,7 +183,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailRice]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(6.00m);
         order.Items[0].TotalPrice.Should().Be(6.00m);
     }
@@ -196,7 +196,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailRice]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].Ingredients.Should().NotBeNull();
         order.Items[0].Ingredients!.Should().HaveCount(2);
         order.Items[0].Ingredients!.Should().OnlyContain(i => i.IngredientName == "Jasmine Rice" && i.PriceCharged == 3.00m);
@@ -210,7 +210,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailRice, AvailChicken]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(9.00m);
         order.Items[0].Ingredients.Should().NotBeNull();
         order.Items[0].Ingredients!.Should().HaveCount(3);
@@ -226,7 +226,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailRice, AvailRice], qty: 2));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(6.00m);
         order.Items[0].TotalPrice.Should().Be(12.00m);
     }
@@ -239,7 +239,7 @@ public class OrderEndpointsTests
             BowlOrder([AvailLettuce, AvailLettuce, AvailLettuce]));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items[0].UnitPrice.Should().Be(1.50m);
         order.Items[0].Ingredients!.Should().HaveCount(3);
     }
@@ -265,7 +265,7 @@ public class OrderEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/orders", req);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Items.Should().HaveCount(3);
         order.Subtotal.Should().Be(11.75m);
         order.TaxRate.Should().Be(TaxRate);
@@ -280,7 +280,7 @@ public class OrderEndpointsTests
         var response = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiChips, VChips));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var order = await response.Content.ReadFromJsonAsync<OrderDto>();
+        var order = (await response.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
         order!.Status.Should().Be(OrderStatus.Received);
         order.PaymentMethod.Should().Be(PaymentMethod.InStore);
         order.PaymentStatus.Should().Be(PaymentStatus.Pending);
