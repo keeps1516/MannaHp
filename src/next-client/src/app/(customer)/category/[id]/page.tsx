@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { BowlBuilder } from "@/components/bowl-builder";
 import { ItemCard } from "@/components/item-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import type { CategoryDto, MenuItemDto } from "@/types/api";
 
@@ -56,8 +57,14 @@ export default function CategoryPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00e5ff]" />
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-5 w-48" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }

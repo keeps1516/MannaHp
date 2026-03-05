@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { FixedItemDetail } from "@/components/fixed-item-detail";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import type { MenuItemDto } from "@/types/api";
 
@@ -31,8 +31,15 @@ export default function ItemPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00e5ff]" />
+      <div className="space-y-4 max-w-lg mx-auto">
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-5 w-64" />
+        <div className="space-y-2 mt-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-14 rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }

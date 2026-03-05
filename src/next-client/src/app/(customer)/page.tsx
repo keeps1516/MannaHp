@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Loader2 } from "lucide-react";
 import { CategoryCard } from "@/components/category-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import type { CategoryDto, MenuItemDto } from "@/types/api";
 
@@ -52,8 +52,16 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00e5ff]" />
+      <div className="space-y-6">
+        <div className="text-center space-y-2">
+          <Skeleton className="h-8 w-48 mx-auto" />
+          <Skeleton className="h-5 w-64 mx-auto" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-36 rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
