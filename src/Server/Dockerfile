@@ -12,7 +12,7 @@ COPY src/Shared/ src/Shared/
 COPY src/Server/ src/Server/
 
 # Publish with Docker configuration (excludes Blazor)
-RUN dotnet publish src/Server/MannaHp.Server.csproj -c Docker -o /app --no-restore
+RUN dotnet publish src/Server/MannaHp.Server.csproj -c Docker -o /app
 
 # Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
