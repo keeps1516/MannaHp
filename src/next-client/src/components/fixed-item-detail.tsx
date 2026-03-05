@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,14 +129,14 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
 
   return (
     <div className="space-y-6">
-      {/* Back button */}
-      <button
-        onClick={() => router.back()}
+      {/* Back to category */}
+      <Link
+        href={`/category/${menuItem.categoryId}`}
         className="sticky top-16 z-40 flex items-center gap-1.5 text-[#7a9bb5] hover:text-[#00e5ff] transition-colors text-sm bg-[#0f1f35]/95 backdrop-blur-sm py-2 -mx-4 px-4 border-b border-[#1e3a5f]/50"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back
-      </button>
+        Back to menu
+      </Link>
 
       {/* Item header */}
       <div>

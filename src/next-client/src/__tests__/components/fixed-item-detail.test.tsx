@@ -5,6 +5,12 @@ import { CartProvider } from "@/store/cart-context";
 import type { MenuItemDto, AvailableIngredientDto } from "@/types/api";
 import { UnitOfMeasure } from "@/types/api";
 
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...rest }: { children: React.ReactNode; href: string }) => (
+    <a href={href} {...rest}>{children}</a>
+  ),
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
@@ -118,9 +124,12 @@ describe("FixedItemDetail", () => {
     expect(screen.getByText("Extra Espresso Shot")).toBeInTheDocument();
   });
 
-  it("renders Back button", () => {
+  it("renders Back button with category link", () => {
     renderFixed();
-    expect(screen.getByText("Back")).toBeInTheDocument();
+    // Back button should link to the category page, not just generic "Back"
+    const backLink = screen.getByRole("link", { name: /back to menu/i });
+    expect(backLink).toBeInTheDocument();
+    expect(backLink).toHaveAttribute("href", "/category/cat-drinks");
   });
 
   it("Add to Cart button is disabled when no variant selected", () => {
