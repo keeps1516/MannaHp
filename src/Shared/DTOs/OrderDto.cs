@@ -18,6 +18,7 @@ public record CreateOrderItemRequest(
 // What the API returns
 public record OrderDto(
 	Guid Id,
+	int OrderNumber,
 	OrderStatus Status,
 	PaymentMethod PaymentMethod,
 	PaymentStatus PaymentStatus,

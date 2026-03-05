@@ -64,7 +64,7 @@ export function OrderCard({
       >
         <div className="flex items-center gap-3">
           <span className="text-sm font-mono text-white font-bold">
-            #{order.id.slice(0, 8).toUpperCase()}
+            #{order.orderNumber}
           </span>
           <span className="text-xs text-[#4a6a85]">
             {itemCount} item{itemCount !== 1 && "s"}

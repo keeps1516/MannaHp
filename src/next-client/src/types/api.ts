@@ -87,6 +87,7 @@ export interface CreateOrderItemRequest {
 
 export interface OrderDto {
   id: string;
+  orderNumber: number;
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;

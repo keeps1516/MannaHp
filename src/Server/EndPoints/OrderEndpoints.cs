@@ -253,6 +253,7 @@ public static class OrderEndpoints
 
     private static OrderDto MapToDto(Order order) => new(
         order.Id,
+        order.OrderNumber,
         order.Status,
         order.PaymentMethod,
         order.PaymentStatus,

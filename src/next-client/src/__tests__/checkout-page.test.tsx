@@ -73,6 +73,7 @@ function makeOrderResponse(): CreateOrderResponse {
   return {
     order: {
       id: "order-123",
+      orderNumber: 1001,
       status: OrderStatus.Received,
       paymentMethod: PaymentMethod.Card,
       paymentStatus: PaymentStatus.Pending,

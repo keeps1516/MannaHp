@@ -7,6 +7,7 @@ import type { OrderDto } from "@/types/api";
 function makeOrder(overrides: Partial<OrderDto> = {}): OrderDto {
   return {
     id: "abcdef12-0000-0000-0000-000000000001",
+    orderNumber: 1042,
     status: OrderStatus.Received,
     paymentMethod: PaymentMethod.InStore,
     paymentStatus: PaymentStatus.Pending,
@@ -50,9 +51,9 @@ function makeOrder(overrides: Partial<OrderDto> = {}): OrderDto {
 const noop = vi.fn().mockResolvedValue(undefined);
 
 describe("OrderCard", () => {
-  it("renders order number (first 8 chars uppercased)", () => {
+  it("renders human-readable order number instead of GUID", () => {
     render(<OrderCard order={makeOrder()} onAdvance={noop} />);
-    expect(screen.getByText("#ABCDEF12")).toBeInTheDocument();
+    expect(screen.getByText("#1042")).toBeInTheDocument();
   });
 
   it("renders item count", () => {
