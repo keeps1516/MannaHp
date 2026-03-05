@@ -31,6 +31,7 @@ services:
       Jwt__Audience: MannaHp
       Jwt__ExpiresInMinutes: "1440"
       CorsOrigins: "${CORS_ORIGINS:-http://localhost:3000,http://next-client:3000}"
+      Sentry__Dsn: "${SENTRY_DSN_API}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,11 +42,30 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5082}
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_NEXTJS}
     container_name: manna-next
     ports:
       - "${NEXT_PORT:-3000}:3000"
+    environment:
+      NEXT_PUBLIC_SENTRY_DSN: "${SENTRY_DSN_NEXTJS}"
+      SENTRY_DSN: "${SENTRY_DSN_NEXTJS}"
     depends_on:
       - api
 
+  bugsink:
+    image: bugsink/bugsink:latest
+    container_name: manna-bugsink
+    ports:
+      - "${BUGSINK_PORT:-9000}:8000"
+    environment:
+      - SECRET_KEY=${BUGSINK_SECRET_KEY}
+      - CREATE_SUPERUSER=${BUGSINK_ADMIN_USER:-admin}:${BUGSINK_ADMIN_PASSWORD:-admin}
+      - PORT=8000
+      - BEHIND_HTTPS_PROXY=false
+    volumes:
+      - bugsink_data:/data
+    restart: unless-stopped
+
 volumes:
   pgdata:
+  bugsink_data:

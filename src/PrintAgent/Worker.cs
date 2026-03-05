@@ -2,6 +2,7 @@ using MannaHp.PrintAgent.Data;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using Sentry;
 
 namespace MannaHp.PrintAgent;
 
@@ -33,6 +34,7 @@ public class Worker(
 			}
 			catch (Exception ex)
 			{
+				SentrySdk.CaptureException(ex);
 				logger.LogError(ex, "Error processing unprinted orders");
 			}
 
@@ -85,6 +87,7 @@ public class Worker(
 			}
 			catch (Exception ex)
 			{
+				SentrySdk.CaptureException(ex);
 				logger.LogError(ex, "Failed to print receipt for Order #{OrderNumber}", order.OrderNumber);
 			}
 		}

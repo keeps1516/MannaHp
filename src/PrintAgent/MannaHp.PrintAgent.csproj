@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageReference Include="QuestPDF" Version="2026.2.0" />
+    <PackageReference Include="Sentry" Version="5.8.0" />
   </ItemGroup>
 
   <ItemGroup>

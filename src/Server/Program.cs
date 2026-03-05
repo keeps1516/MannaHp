@@ -12,6 +12,14 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Sentry error tracking
+builder.WebHost.UseSentry(o =>
+{
+    o.Dsn = builder.Configuration["Sentry:Dsn"] ?? "";
+    o.TracesSampleRate = 0.2;
+    o.SendDefaultPii = false;
+});
+
 // CORS for Next.js frontend
 builder.Services.AddCors(options =>
 {
@@ -83,6 +91,7 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
+app.UseSentryTracing();
 app.UseCors("NextClient");
 
 app.UseAuthentication();
