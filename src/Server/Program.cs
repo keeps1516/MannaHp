@@ -20,6 +20,9 @@ builder.WebHost.UseSentry(o =>
     o.SendDefaultPii = false;
 });
 
+// Return structured error bodies for all 4xx/5xx responses
+builder.Services.AddProblemDetails();
+
 // CORS for Next.js frontend
 builder.Services.AddCors(options =>
 {

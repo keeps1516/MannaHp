@@ -76,6 +76,32 @@ public class AuthEndpointsTests
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Fact]
+    public async Task Login_EmptyEmail_Returns400WithValidationErrors()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest("", "MannaOwner123!"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().NotBeNullOrEmpty("Validation errors should include a JSON body");
+        body.Should().Contain("Email", "Response should indicate which field failed");
+    }
+
+    [Fact]
+    public async Task Login_ShortPassword_Returns400WithValidationErrors()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/login",
+            new LoginRequest("test@example.com", "ab"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().NotBeNullOrEmpty("Validation errors should include a JSON body");
+        body.Should().Contain("Password", "Response should indicate which field failed");
+    }
+
     // ── GET /api/auth/me ──────────────────────────────────────────────
 
     [Fact]
