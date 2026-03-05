@@ -132,6 +132,14 @@ describe("BowlBuilder", () => {
     expect(screen.getByText("One Of Everything")).toBeInTheDocument();
   });
 
+  it("shows estimated total with tax in the sticky footer", () => {
+    renderBowl([rice, lettuce]);
+    // Select rice ($3.00)
+    fireEvent.click(screen.getByText("Jasmine Rice"));
+    // Should show estimated total with tax (8.25%): $3.00 + $0.25 = $3.25
+    expect(screen.getByText(/Est\. with tax: \$3\.25/)).toBeInTheDocument();
+  });
+
   it("filters out inactive ingredients", () => {
     const inactive = makeIngredient({
       id: "ing-inactive",

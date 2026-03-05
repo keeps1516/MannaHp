@@ -86,6 +86,8 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
     return groups;
   }, [activeIngredients]);
 
+  const TAX_RATE = 0.0825;
+
   const runningTotal = useMemo(() => {
     let total = 0;
     for (const ing of activeIngredients) {
@@ -93,6 +95,11 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
     }
     return total;
   }, [activeIngredients, quantities]);
+
+  const estimatedWithTax = useMemo(() => {
+    const subtotal = runningTotal * bowlQty;
+    return Math.round((subtotal + subtotal * TAX_RATE) * 100) / 100;
+  }, [runningTotal, bowlQty]);
 
   const hasSelection = useMemo(
     () => Object.values(quantities).some((q) => q > 0),
@@ -290,6 +297,11 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
             {bowlQty > 1 && (
               <p className="text-xs text-[#4a6a85]">
                 ${runningTotal.toFixed(2)} each
+              </p>
+            )}
+            {runningTotal > 0 && (
+              <p className="text-xs text-[#7a9bb5]">
+                Est. with tax: ${estimatedWithTax.toFixed(2)}
               </p>
             )}
           </div>
