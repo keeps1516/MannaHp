@@ -30,6 +30,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
   const router = useRouter();
   const [placing, setPlacing] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const pendingOrderIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
@@ -65,6 +66,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
       cart.clear();
       onOpenChange(false);
       pendingOrderIdRef.current = response.order.id;
+      setConfirmedOrderNumber(response.order.orderNumber);
       setShowVideo(true);
     } catch {
       toast.error("Failed to place order. Please try again.");
@@ -206,6 +208,19 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
             onEnded={finishOrder}
             className="w-full h-full object-cover"
           />
+          {confirmedOrderNumber && (
+            <div className="absolute bottom-16 left-0 right-0 text-center">
+              <div className="inline-block bg-black/70 rounded-xl px-8 py-4 backdrop-blur-sm">
+                <p className="text-white text-sm mb-1">Your Order</p>
+                <p className="text-[#00e5ff] text-4xl font-bold">
+                  #{confirmedOrderNumber}
+                </p>
+                <p className="text-white/60 text-xs mt-2">
+                  Tap anywhere to view status
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Sheet>

@@ -188,6 +188,20 @@ describe("CartDrawer", () => {
     expect(pushMock).toHaveBeenCalledWith("/checkout");
   });
 
+  it("shows order number after successful in-store order", async () => {
+    createOrderMock.mockResolvedValue(makeOrderResponse());
+
+    renderCartDrawer();
+
+    const payInStoreBtn = screen.getByRole("button", { name: /Pay In-Store/i });
+    fireEvent.click(payInStoreBtn);
+
+    await waitFor(() => {
+      // Should display the order number from the response
+      expect(screen.getByText(/#1001/)).toBeInTheDocument();
+    });
+  });
+
   it("re-enables submitting after a failed order", async () => {
     createOrderMock
       .mockRejectedValueOnce(new Error("Network error"))
