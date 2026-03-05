@@ -19,4 +19,7 @@
   <Folder Name="/tests/MannaHp.E2E.Tests/">
     <Project Path="tests/MannaHp.E2E.Tests/MannaHp.E2E.Tests.csproj" />
   </Folder>
+  <Folder Name="/tests/MannaHp.PrintAgent.Tests/">
+    <Project Path="tests/MannaHp.PrintAgent.Tests/MannaHp.PrintAgent.Tests.csproj" />
+  </Folder>
 </Solution>

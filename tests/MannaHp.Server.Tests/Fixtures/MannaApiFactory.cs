@@ -43,8 +43,7 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        // Create the test DB *before* the host starts (Program.cs seeds the owner on startup)
-        // Use a standalone DbContext to avoid triggering the host
+        // Drop the test DB so Program.cs can recreate it via MigrateAsync
         var options = new DbContextOptionsBuilder<MannaDbContext>()
             .UseNpgsql(TestConnectionString,
                 npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
@@ -53,7 +52,6 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await using (var db = new MannaDbContext(options))
         {
             await db.Database.EnsureDeletedAsync();
-            await db.Database.EnsureCreatedAsync();
         }
 
         // Now it's safe to access Services (triggers host startup + Program.cs owner seed)

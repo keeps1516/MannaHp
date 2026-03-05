@@ -325,7 +325,7 @@ public class OrderEndpointsTests
     {
         // Create an order first
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte12));
-        var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
+        var created = (await createResponse.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
 
         // Fetch it
         var order = await _client.GetFromJsonAsync<OrderDto>($"/api/orders/{created!.Id}");
@@ -353,14 +353,14 @@ public class OrderEndpointsTests
 
         // Create an order, then mark it completed
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiChips, VChips));
-        var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
+        var created = (await createResponse.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
 
         await staffClient.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
             new UpdateOrderStatusRequest(OrderStatus.Completed));
 
         // Create another active order
         var activeResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiEspShot, VEspShot));
-        var active = await activeResponse.Content.ReadFromJsonAsync<OrderDto>();
+        var active = (await activeResponse.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
 
         // Fetch active orders (requires Staff auth)
         var orders = await staffClient.GetFromJsonAsync<List<OrderDto>>("/api/orders/active");
@@ -379,7 +379,7 @@ public class OrderEndpointsTests
 
         // Create an order
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte16));
-        var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
+        var created = (await createResponse.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
 
         // Update status to Preparing (requires Staff auth)
         var patchResponse = await staffClient.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
@@ -409,7 +409,7 @@ public class OrderEndpointsTests
         var staffClient = await _factory.CreateStaffClientAsync();
 
         var createResponse = await _client.PostAsJsonAsync("/api/orders", FixedOrder(MiLatte, VLatte12));
-        var created = await createResponse.Content.ReadFromJsonAsync<OrderDto>();
+        var created = (await createResponse.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
 
         var response = await staffClient.PatchAsJsonAsync($"/api/orders/{created!.Id}/status",
             new UpdateOrderStatusRequest((OrderStatus)999));

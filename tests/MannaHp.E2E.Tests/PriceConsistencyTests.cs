@@ -6,6 +6,7 @@ using MannaHp.Server.Data;
 using MannaHp.Shared.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Playwright;
+using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 using UglyToad.PdfPig;
 

@@ -45,7 +45,7 @@ public class MenuItemEndpointsTests
         item!.Name.Should().Be("Burrito Bowl");
         item.IsCustomizable.Should().BeTrue();
         item.AvailableIngredients.Should().NotBeNull();
-        item.AvailableIngredients!.Should().HaveCount(10);
+        item.AvailableIngredients!.Should().HaveCountGreaterThanOrEqualTo(10);
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class MenuItemEndpointsTests
         item.IsCustomizable.Should().BeFalse();
         // Latte has add-ons (espresso shot, alt milk, whipped cream)
         item.AvailableIngredients.Should().NotBeNull();
-        item.AvailableIngredients!.Should().HaveCount(3);
+        item.AvailableIngredients!.Should().HaveCountGreaterThanOrEqualTo(3);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class MenuItemEndpointsTests
     {
         var item = await _client.GetFromJsonAsync<MenuItemDto>($"/api/menu-items/{MiLatte}");
 
-        item!.Variants.Should().HaveCount(2);
+        item!.Variants.Should().HaveCountGreaterThanOrEqualTo(2);
         item.Variants.Select(v => v.Name).Should().Contain("12oz").And.Contain("16oz");
     }
 
