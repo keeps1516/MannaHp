@@ -133,6 +133,18 @@ describe("CartDrawer", () => {
     expect(screen.getByText(/Latte/)).toBeInTheDocument();
   });
 
+  it("has an accessible description for the sheet (no missing aria warning)", () => {
+    renderCartDrawer();
+    // The Sheet dialog should have aria-describedby pointing to a SheetDescription
+    const dialog = document.querySelector("[role='dialog']");
+    expect(dialog).toBeTruthy();
+    const describedBy = dialog?.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    // The described-by element should exist in the DOM
+    const descEl = document.getElementById(describedBy!);
+    expect(descEl).toBeTruthy();
+  });
+
   it("shows empty state when no items", () => {
     renderCartDrawer([]);
     expect(screen.getByText("Your cart is empty")).toBeInTheDocument();

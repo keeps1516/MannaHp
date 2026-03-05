@@ -6,6 +6,7 @@ import { ShoppingCart, Trash2, CreditCard, Store } from "lucide-react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -83,6 +84,9 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
       <SheetContent className="flex flex-col w-full sm:max-w-md p-0 bg-[#0f1f35] border-l border-[#1e3a5f] text-white">
         <SheetHeader className="px-6 py-4 border-b border-[#1e3a5f]">
           <SheetTitle className="text-white">Your Order</SheetTitle>
+          <SheetDescription className="sr-only">
+            Review and manage items in your cart
+          </SheetDescription>
         </SheetHeader>
 
         {cart.items.length === 0 ? (
