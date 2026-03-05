@@ -155,7 +155,6 @@ export default function OrdersPage() {
       </div>
 
       {/* Kanban columns – mobile: Ready → Preparing → Received (top-down priority) */}
-      {/* Empty columns collapse on mobile, stay visible on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Received — collapsed by default */}
         <KanbanColumn
@@ -165,7 +164,7 @@ export default function OrdersPage() {
           orders={received}
           onAdvance={handleAdvance}
           autoExpand="none"
-          className={`order-3 lg:order-1 ${received.length === 0 ? "hidden lg:block" : ""}`}
+          className="order-3 lg:order-1"
         />
 
         {/* Preparing — first card expanded */}
@@ -176,7 +175,7 @@ export default function OrdersPage() {
           orders={preparing}
           onAdvance={handleAdvance}
           autoExpand="first"
-          className={`order-2 lg:order-2 ${preparing.length === 0 ? "hidden lg:block" : ""}`}
+          className="order-2 lg:order-2"
         />
 
         {/* Ready — all expanded */}
@@ -187,7 +186,7 @@ export default function OrdersPage() {
           orders={ready}
           onAdvance={handleAdvance}
           autoExpand="all"
-          className={`order-1 lg:order-3 ${ready.length === 0 ? "hidden lg:block" : ""}`}
+          className="order-1 lg:order-3"
         />
       </div>
     </div>
