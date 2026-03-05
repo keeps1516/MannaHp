@@ -31,6 +31,9 @@ services:
       Jwt__Audience: MannaHp
       Jwt__ExpiresInMinutes: "1440"
       CorsOrigins: "${CORS_ORIGINS:-http://localhost:3000,http://next-client:3000}"
+      Stripe__SecretKey: "${STRIPE_SECRET_KEY}"
+      Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY}"
+      Stripe__WebhookSecret: "${STRIPE_WEBHOOK_SECRET}"
       Sentry__Dsn: "${SENTRY_DSN_API}"
     depends_on:
       postgres:

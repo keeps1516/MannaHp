@@ -58,7 +58,7 @@ export default function CheckoutPage() {
         if (cancelled) return;
 
         if (!response.clientSecret || !response.stripePublishableKey) {
-          setError("Payment setup failed. Please try again.");
+          setError("Card payments are not yet available. Please pay in-store instead.");
           return;
         }
 

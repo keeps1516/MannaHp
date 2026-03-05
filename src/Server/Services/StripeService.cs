@@ -4,19 +4,25 @@ namespace MannaHp.Server.Services;
 
 public class StripeService
 {
-    private readonly string _publishableKey;
+    private readonly string? _publishableKey;
+
+    public bool IsConfigured { get; }
 
     public StripeService(IConfiguration config)
     {
-        var secretKey = config["Stripe:SecretKey"]
-            ?? throw new InvalidOperationException("Stripe:SecretKey is not configured");
-        _publishableKey = config["Stripe:PublishableKey"]
-            ?? throw new InvalidOperationException("Stripe:PublishableKey is not configured");
+        var secretKey = config["Stripe:SecretKey"];
+        _publishableKey = config["Stripe:PublishableKey"];
 
-        StripeConfiguration.ApiKey = secretKey;
+        IsConfigured = !string.IsNullOrEmpty(secretKey) && !string.IsNullOrEmpty(_publishableKey);
+
+        if (IsConfigured)
+        {
+            StripeConfiguration.ApiKey = secretKey;
+        }
     }
 
-    public string PublishableKey => _publishableKey;
+    public string PublishableKey => _publishableKey
+        ?? throw new InvalidOperationException("Stripe is not configured");
 
     public async Task<PaymentIntent> CreatePaymentIntentAsync(decimal amount, string? description = null)
     {

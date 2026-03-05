@@ -149,6 +149,26 @@ describe("CheckoutPage", () => {
     expect(request.paymentMethod).toBe(PaymentMethod.Card);
   });
 
+  it("shows clear error when Stripe is not configured", async () => {
+    createOrderMock.mockResolvedValue({
+      ...makeOrderResponse(),
+      clientSecret: null,
+      stripePublishableKey: null,
+    });
+
+    const { container } = render(
+      <CartProvider>
+        <CheckoutWithCart items={[makeCartItem()]} />
+      </CartProvider>
+    );
+
+    await waitFor(() => {
+      expect(container.textContent).toContain(
+        "Card payments are not yet available"
+      );
+    });
+  });
+
   it("redirects to home when cart is empty", async () => {
     render(
       <CartProvider>

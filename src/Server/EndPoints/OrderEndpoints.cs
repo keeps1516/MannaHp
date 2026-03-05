@@ -120,6 +120,9 @@ public static class OrderEndpoints
             string? clientSecret = null;
             if (req.PaymentMethod == PaymentMethod.Card)
             {
+                if (!stripe.IsConfigured)
+                    return Results.UnprocessableEntity(new { error = "Card payments are not yet available. Stripe is not configured." });
+
                 var paymentIntent = await stripe.CreatePaymentIntentAsync(
                     order.Total, "Manna order");
                 order.StripePaymentId = paymentIntent.Id;
