@@ -145,6 +145,33 @@ describe("CartDrawer", () => {
     expect(descEl).toBeTruthy();
   });
 
+  it("shows Edit button for customizable (bowl) items in cart", () => {
+    const bowlItem = makeCartItem({
+      menuItem: {
+        ...makeCartItem().menuItem,
+        isCustomizable: true,
+        name: "Burrito Bowl",
+      },
+      variant: null,
+      selectedIngredients: [
+        {
+          id: "ing-1",
+          ingredientId: "raw-1",
+          ingredientName: "Rice",
+          customerPrice: 3.0,
+          quantityUsed: 10,
+          isDefault: false,
+          groupName: "Bases",
+          sortOrder: 1,
+          active: true,
+          ingredientUnit: 0,
+        },
+      ],
+    });
+    renderCartDrawer([bowlItem]);
+    expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
+  });
+
   it("shows empty state when no items", () => {
     renderCartDrawer([]);
     expect(screen.getByText("Your cart is empty")).toBeInTheDocument();

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Trash2, CreditCard, Store } from "lucide-react";
+import { ShoppingCart, Trash2, CreditCard, Store, Pencil } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -125,14 +125,31 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                           </p>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-[#ff4757] hover:text-[#ff6b81] hover:bg-[#ff4757]/10"
-                        onClick={() => cart.removeItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {item.menuItem.isCustomizable && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-[#00e5ff] hover:text-[#00c8e0] hover:bg-[#00e5ff]/10"
+                            onClick={() => {
+                              cart.removeItem(item.id);
+                              onOpenChange(false);
+                              router.push(`/category/${item.menuItem.categoryId}`);
+                            }}
+                            aria-label="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-[#ff4757] hover:text-[#ff6b81] hover:bg-[#ff4757]/10"
+                          onClick={() => cart.removeItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <QuantitySelector
