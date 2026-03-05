@@ -229,6 +229,18 @@ public static class OrderEndpoints
             return Results.Ok(orders.Select(MapToDto).ToList());
         }).RequireAuthorization("Staff");
 
+        // GET today's revenue — Staff only
+        group.MapGet("/today-revenue", async (MannaDbContext db) =>
+        {
+            var todayUtc = DateTime.UtcNow.Date;
+            var total = await db.Orders
+                .Where(o => o.CreatedAt >= todayUtc
+                    && o.Status == OrderStatus.Completed)
+                .SumAsync(o => o.Total);
+
+            return Results.Ok(new { total });
+        }).RequireAuthorization("Staff");
+
         // PATCH status (kitchen staff) — Staff only
         group.MapPatch("/{id:guid}/status", async (Guid id, UpdateOrderStatusRequest req,
             MannaDbContext db, IHubContext<OrderHub> hub) =>

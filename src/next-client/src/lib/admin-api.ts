@@ -112,6 +112,9 @@ export const adminApi = {
   getActiveOrders: (token: string) =>
     adminFetch<OrderDto[]>("/api/orders/active", token),
 
+  getTodayRevenue: (token: string) =>
+    adminFetch<{ total: number }>("/api/orders/today-revenue", token),
+
   updateOrderStatus: (token: string, id: string, status: OrderStatus) =>
     adminFetch<{ id: string; status: OrderStatus }>(
       `/api/orders/${id}/status`,

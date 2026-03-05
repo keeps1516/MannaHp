@@ -16,14 +16,16 @@ export default function AdminDashboardPage() {
   const { user, token } = useAuth();
   const [activeOrders, setActiveOrders] = useState<number | null>(null);
   const [lowStockCount, setLowStockCount] = useState<number | null>(null);
+  const [todayRevenue, setTodayRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
-      const [orders, ingredients] = await Promise.all([
+      const [orders, ingredients, revenue] = await Promise.all([
         adminApi.getActiveOrders(token),
         adminApi.getIngredients(token),
+        adminApi.getTodayRevenue(token),
       ]);
 
       setActiveOrders(orders.length);
@@ -32,6 +34,7 @@ export default function AdminDashboardPage() {
           (i) => i.active && i.stockQuantity < i.lowStockThreshold
         ).length
       );
+      setTodayRevenue(revenue.total);
     } catch {
       // silent — dashboard is non-critical
     } finally {
@@ -70,10 +73,9 @@ export default function AdminDashboardPage() {
         />
         <DashboardCard
           title="Today's Revenue"
-          value="Coming Soon"
+          value={loading ? null : `$${(todayRevenue ?? 0).toFixed(2)}`}
           icon={<DollarSign className="h-5 w-5 text-emerald-400" />}
           iconBg="bg-emerald-400/10"
-          muted
         />
       </div>
 
