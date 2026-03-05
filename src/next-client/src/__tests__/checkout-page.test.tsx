@@ -112,6 +112,7 @@ function CheckoutWithCart({ items }: { items: Omit<CartItem, "id">[] }) {
 describe("CheckoutPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it("calls createOrder exactly once (no duplicate from re-mount)", async () => {

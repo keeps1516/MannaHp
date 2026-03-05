@@ -123,6 +123,7 @@ function CartDrawerWithItems({
 describe("CartDrawer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it("renders cart items when open", () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { CartProvider, useCart } from "@/store/cart-context";
 import type { MenuItemDto, MenuItemVariantDto, AvailableIngredientDto } from "@/types/api";
@@ -62,6 +62,10 @@ function CartConsumer({ onRender }: { onRender: (cart: ReturnType<typeof useCart
 describe("CartContext", () => {
   let lastCart: ReturnType<typeof useCart>;
   const capture = (cart: ReturnType<typeof useCart>) => { lastCart = cart; };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
   function renderCart() {
     render(
@@ -165,5 +169,62 @@ describe("CartContext", () => {
       act(() => lastCart.removeItem("nonexistent-id"));
     }).not.toThrow();
     expect(lastCart.items).toHaveLength(1);
+  });
+});
+
+describe("CartContext localStorage persistence", () => {
+  let lastCart: ReturnType<typeof useCart>;
+  const capture = (cart: ReturnType<typeof useCart>) => { lastCart = cart; };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  function renderCart() {
+    return render(
+      <CartProvider>
+        <CartConsumer onRender={capture} />
+      </CartProvider>
+    );
+  }
+
+  it("persists cart items to localStorage when an item is added", () => {
+    renderCart();
+    act(() => lastCart.addItem(makeCartItemPayload()));
+    const stored = localStorage.getItem("manna-cart");
+    expect(stored).not.toBeNull();
+    const parsed = JSON.parse(stored!);
+    expect(parsed.items).toHaveLength(1);
+    expect(parsed.items[0].menuItem.name).toBe("Latte");
+  });
+
+  it("hydrates cart from localStorage on mount", () => {
+    // Pre-populate localStorage with a cart item
+    const seedItems = [{
+      id: "seed-1",
+      menuItem: makeMenuItem(),
+      variant: makeVariant(),
+      selectedIngredients: null,
+      quantity: 2,
+      notes: null,
+    }];
+    localStorage.setItem("manna-cart", JSON.stringify({ items: seedItems }));
+
+    renderCart();
+    expect(lastCart.items).toHaveLength(1);
+    expect(lastCart.items[0].quantity).toBe(2);
+    expect(lastCart.items[0].menuItem.name).toBe("Latte");
+  });
+
+  it("clears localStorage when cart is cleared", () => {
+    renderCart();
+    act(() => lastCart.addItem(makeCartItemPayload()));
+    expect(localStorage.getItem("manna-cart")).not.toBeNull();
+
+    act(() => lastCart.clear());
+    const stored = localStorage.getItem("manna-cart");
+    expect(stored).not.toBeNull();
+    const parsed = JSON.parse(stored!);
+    expect(parsed.items).toHaveLength(0);
   });
 });
