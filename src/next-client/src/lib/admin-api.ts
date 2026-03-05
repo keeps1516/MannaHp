@@ -108,6 +108,17 @@ export const adminApi = {
       body: JSON.stringify(req),
     }),
 
+  // ── Settings ──
+  getSettings: (token: string) =>
+    adminFetch<{ key: string; value: string }[]>("/api/settings", token),
+
+  updateSettings: (token: string, settings: { key: string; value: string }[]) =>
+    adminFetchNoBody("/api/settings", token, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    }),
+
   // ── Orders ──
   getActiveOrders: (token: string) =>
     adminFetch<OrderDto[]>("/api/orders/active", token),

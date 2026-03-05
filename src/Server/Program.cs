@@ -137,6 +137,7 @@ app.MapAvailableIngredientEndpoints();
 app.MapRecipeIngredientEndpoints();
 app.MapOrderEndpoints();
 app.MapStripeWebhookEndpoints();
+app.MapSettingsEndpoints();
 
 // SignalR hubs
 app.MapHub<OrderHub>("/hubs/orders");
