@@ -14,7 +14,7 @@ export default function OrdersPage() {
   const { token } = useAuth();
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [connected, setConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "polling">("connecting");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchOrders = useCallback(async () => {
@@ -60,7 +60,7 @@ export default function OrdersPage() {
       },
       // onReconnected
       () => {
-        setConnected(true);
+        setConnectionStatus("live");
         fetchOrders(); // Re-sync after reconnect
         if (pollRef.current) {
           clearInterval(pollRef.current);
@@ -69,16 +69,16 @@ export default function OrdersPage() {
       },
       // onDisconnected
       () => {
-        setConnected(false);
+        setConnectionStatus("polling");
         // Start polling as fallback
         if (!pollRef.current) {
           pollRef.current = setInterval(fetchOrders, 15000);
         }
       }
     )
-      .then(() => setConnected(true))
+      .then(() => setConnectionStatus("live"))
       .catch(() => {
-        setConnected(false);
+        setConnectionStatus("polling");
         // If SignalR fails to connect, use polling
         if (!pollRef.current) {
           pollRef.current = setInterval(fetchOrders, 15000);
@@ -140,10 +140,15 @@ export default function OrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          {connected ? (
+          {connectionStatus === "live" ? (
             <div className="flex items-center gap-1.5 text-emerald-400">
               <Wifi className="h-4 w-4" />
               <span>Live</span>
+            </div>
+          ) : connectionStatus === "connecting" ? (
+            <div className="flex items-center gap-1.5 text-[#7a9bb5]">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Connecting...</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-amber-400">
