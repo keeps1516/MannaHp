@@ -416,4 +416,130 @@ public class OrderEndpointsTests
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    // ── Inventory decrement on Completed ──────────────────────────────
+
+    // Known seed ingredient GUIDs (from SeedData.cs)
+    private static readonly Guid IngJRice = Guid.Parse("b0000000-0001-0000-0000-000000000001");
+    private static readonly Guid IngChicken = Guid.Parse("b0000000-0004-0000-0000-000000000004");
+    private static readonly Guid IngEspresso = Guid.Parse("b0000000-000e-0000-0000-000000000014");
+    private static readonly Guid IngMilk = Guid.Parse("b0000000-000f-0000-0000-000000000015");
+
+    private async Task<decimal> GetStockAsync(Guid ingredientId)
+    {
+        var ing = await _client.GetFromJsonAsync<IngredientDto>($"/api/ingredients/{ingredientId}");
+        return ing!.StockQuantity;
+    }
+
+    [Fact]
+    public async Task Completing_BowlOrder_DecrementsIngredientStock()
+    {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
+        // Snapshot stock before ordering
+        var riceBefore = await GetStockAsync(IngJRice);
+        var chickenBefore = await GetStockAsync(IngChicken);
+
+        // Place a bowl order: 1x Rice (10 oz) + 1x Chicken (8 oz)
+        var createResp = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice, AvailChicken]));
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = (await createResp.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
+
+        // Mark as Completed
+        var patchResp = await staffClient.PatchAsJsonAsync($"/api/orders/{order!.Id}/status",
+            new UpdateOrderStatusRequest(OrderStatus.Completed));
+        patchResp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Stock should be decremented by QuantityUsed
+        var riceAfter = await GetStockAsync(IngJRice);
+        var chickenAfter = await GetStockAsync(IngChicken);
+
+        riceAfter.Should().Be(riceBefore - 10.0m);
+        chickenAfter.Should().Be(chickenBefore - 8.0m);
+    }
+
+    [Fact]
+    public async Task Completing_BowlOrder_Qty2_DecrementsDoubleStock()
+    {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
+        var riceBefore = await GetStockAsync(IngJRice);
+
+        // Place a bowl order: 1x Rice (10 oz) × qty 2
+        var createResp = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice], qty: 2));
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = (await createResp.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
+
+        await staffClient.PatchAsJsonAsync($"/api/orders/{order!.Id}/status",
+            new UpdateOrderStatusRequest(OrderStatus.Completed));
+
+        var riceAfter = await GetStockAsync(IngJRice);
+        riceAfter.Should().Be(riceBefore - 20.0m); // 10 oz × 2 qty
+    }
+
+    [Fact]
+    public async Task Completing_FixedItem_DecrementsViaRecipeIngredients()
+    {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
+        // Latte 12oz recipe: 2 oz espresso + 10 oz milk
+        var espressoBefore = await GetStockAsync(IngEspresso);
+        var milkBefore = await GetStockAsync(IngMilk);
+
+        var createResp = await _client.PostAsJsonAsync("/api/orders",
+            FixedOrder(MiLatte, VLatte12));
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = (await createResp.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
+
+        await staffClient.PatchAsJsonAsync($"/api/orders/{order!.Id}/status",
+            new UpdateOrderStatusRequest(OrderStatus.Completed));
+
+        var espressoAfter = await GetStockAsync(IngEspresso);
+        var milkAfter = await GetStockAsync(IngMilk);
+
+        espressoAfter.Should().Be(espressoBefore - 2.0m);
+        milkAfter.Should().Be(milkBefore - 10.0m);
+    }
+
+    [Fact]
+    public async Task Completing_FixedItem_Qty2_DecrementsDoubleRecipe()
+    {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
+        var espressoBefore = await GetStockAsync(IngEspresso);
+
+        // Latte 12oz × qty 2: 2 oz espresso × 2 = 4 oz
+        var createResp = await _client.PostAsJsonAsync("/api/orders",
+            FixedOrder(MiLatte, VLatte12, qty: 2));
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = (await createResp.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
+
+        await staffClient.PatchAsJsonAsync($"/api/orders/{order!.Id}/status",
+            new UpdateOrderStatusRequest(OrderStatus.Completed));
+
+        var espressoAfter = await GetStockAsync(IngEspresso);
+        espressoAfter.Should().Be(espressoBefore - 4.0m);
+    }
+
+    [Fact]
+    public async Task NonCompleted_StatusChange_DoesNotDecrementStock()
+    {
+        var staffClient = await _factory.CreateStaffClientAsync();
+
+        var riceBefore = await GetStockAsync(IngJRice);
+
+        var createResp = await _client.PostAsJsonAsync("/api/orders",
+            BowlOrder([AvailRice]));
+        createResp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var order = (await createResp.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;
+
+        // Move to Preparing — should NOT decrement
+        await staffClient.PatchAsJsonAsync($"/api/orders/{order!.Id}/status",
+            new UpdateOrderStatusRequest(OrderStatus.Preparing));
+
+        var riceAfter = await GetStockAsync(IngJRice);
+        riceAfter.Should().Be(riceBefore);
+    }
 }

@@ -20,7 +20,11 @@ public static class OrderEndpoints
         group.MapPost("/", async (CreateOrderRequest req, MannaDbContext db,
             IHubContext<OrderHub> hub, StripeService stripe) =>
         {
-            var taxRate = 0.0825m; // TODO: pull from app_settings table
+            var taxRateSetting = await db.AppSettings
+                .FirstOrDefaultAsync(s => s.Key == "DefaultTaxRate");
+            var taxRate = taxRateSetting is not null
+                ? decimal.TryParse(taxRateSetting.Value, out var parsed) ? parsed : 0.0825m
+                : 0.0825m;
 
             var order = new Order
             {
@@ -245,11 +249,24 @@ public static class OrderEndpoints
         group.MapPatch("/{id:guid}/status", async (Guid id, UpdateOrderStatusRequest req,
             MannaDbContext db, IHubContext<OrderHub> hub) =>
         {
-            var order = await db.Orders.FindAsync(id);
+            var order = await db.Orders
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients)
+                .Include(o => o.Items).ThenInclude(oi => oi.Variant)
+                    .ThenInclude(v => v!.RecipeIngredients)
+                .FirstOrDefaultAsync(o => o.Id == id);
             if (order is null) return Results.NotFound();
 
-            order.Status = req.Status;
+            var previousStatus = order.Status;
             order.UpdatedAt = DateTime.UtcNow;
+
+            // Decrement inventory only on transition to Completed (guard against double-decrement)
+            if (req.Status == OrderStatus.Completed && previousStatus != OrderStatus.Completed)
+            {
+                await DecrementInventoryAsync(db, order);
+            }
+
+            order.Status = req.Status;
+
             await db.SaveChangesAsync();
 
             var update = new { order.Id, order.Status };
@@ -261,6 +278,53 @@ public static class OrderEndpoints
             return Results.Ok(update);
         }).AddEndpointFilter<ValidationFilter<UpdateOrderStatusRequest>>()
           .RequireAuthorization("Staff");
+    }
+
+    private static async Task DecrementInventoryAsync(MannaDbContext db, Order order)
+    {
+        // Aggregate total usage per ingredient across all order items
+        var decrements = new Dictionary<Guid, decimal>();
+
+        foreach (var item in order.Items)
+        {
+            // Customizable items (bowls): decrement from order_item_ingredients
+            if (item.Ingredients.Count > 0)
+            {
+                foreach (var oii in item.Ingredients)
+                {
+                    var total = oii.QuantityUsed * item.Quantity;
+                    if (decrements.ContainsKey(oii.IngredientId))
+                        decrements[oii.IngredientId] += total;
+                    else
+                        decrements[oii.IngredientId] = total;
+                }
+            }
+            // Fixed items (drinks/sides): decrement from recipe_ingredients via variant
+            else if (item.Variant?.RecipeIngredients is { Count: > 0 } recipe)
+            {
+                foreach (var ri in recipe)
+                {
+                    var total = ri.Quantity * item.Quantity;
+                    if (decrements.ContainsKey(ri.IngredientId))
+                        decrements[ri.IngredientId] += total;
+                    else
+                        decrements[ri.IngredientId] = total;
+                }
+            }
+        }
+
+        if (decrements.Count == 0) return;
+
+        var ingredientIds = decrements.Keys.ToList();
+        var ingredients = await db.Ingredients
+            .Where(i => ingredientIds.Contains(i.Id))
+            .ToListAsync();
+
+        foreach (var ingredient in ingredients)
+        {
+            if (decrements.TryGetValue(ingredient.Id, out var amount))
+                ingredient.StockQuantity -= amount;
+        }
     }
 
     private static OrderDto MapToDto(Order order) => new(
