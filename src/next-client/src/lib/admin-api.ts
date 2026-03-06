@@ -94,11 +94,24 @@ async function adminFetchNoBody(
 
 export const adminApi = {
   // ── Auth ──
-  login: (req: LoginRequest) =>
-    adminFetch<AuthResponse>("/api/auth/login", null, {
+  login: async (req: LoginRequest): Promise<AuthResponse> => {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req),
-    }),
+    });
+
+    if (res.status === 401) {
+      throw new Error("Invalid email or password");
+    }
+
+    if (!res.ok) {
+      const errorBody = await res.text();
+      throw new Error(`API error ${res.status}: ${errorBody}`);
+    }
+
+    return res.json();
+  },
 
   me: (token: string) => adminFetch<UserDto>("/api/auth/me", token),
 

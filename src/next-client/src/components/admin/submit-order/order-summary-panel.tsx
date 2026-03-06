@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import type { CartItem } from "@/types/cart";
 import { getUnitPrice, getLineTotal, getDisplayName } from "@/types/cart";
 
-const TAX_RATE = 0.0825;
+const DEFAULT_TAX_RATE = 0.0825;
 
 interface OrderSummaryPanelProps {
   items: CartItem[];
   orderNotes: string;
+  taxRate?: number;
   onOrderNotesChange: (notes: string) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
@@ -22,6 +23,7 @@ interface OrderSummaryPanelProps {
 export function OrderSummaryPanel({
   items,
   orderNotes,
+  taxRate = DEFAULT_TAX_RATE,
   onOrderNotesChange,
   onUpdateQuantity,
   onRemoveItem,
@@ -30,9 +32,9 @@ export function OrderSummaryPanel({
 }: OrderSummaryPanelProps) {
   const { subtotal, tax, total } = useMemo(() => {
     const sub = items.reduce((sum, i) => sum + getLineTotal(i), 0);
-    const t = Math.round(sub * TAX_RATE * 100) / 100;
+    const t = Math.round(sub * taxRate * 100) / 100;
     return { subtotal: sub, tax: t, total: sub + t };
-  }, [items]);
+  }, [items, taxRate]);
 
   return (
     <div className="flex flex-col h-full">
@@ -141,7 +143,7 @@ export function OrderSummaryPanel({
               <span>${subtotal.toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between text-[#7a9bb5]">
-              <span>Tax (8.25%)</span>
+              <span>Tax ({(taxRate * 100).toFixed(2)}%)</span>
               <span>${tax.toFixed(2)}</span>
             </div>
             <div className="flex items-center justify-between text-white font-semibold text-base pt-1">

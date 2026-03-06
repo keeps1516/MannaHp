@@ -147,7 +147,7 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
       </div>
 
       {/* Hero image */}
-      {menuItem.imageUrl && (
+      {menuItem.imageUrl ? (
         <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#163a50]">
           <Image
             src={menuItem.imageUrl}
@@ -162,6 +162,15 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
               Not an accurate image
             </span>
           )}
+        </div>
+      ) : (
+        <div
+          data-testid="image-fallback"
+          className="w-full aspect-[16/9] rounded-xl bg-gradient-to-br from-[#1e3a5f] via-[#163a50] to-[#0f1f35] flex items-center justify-center"
+        >
+          <span className="text-3xl font-bold text-[#00e5ff]/40">
+            {menuItem.name}
+          </span>
         </div>
       )}
 

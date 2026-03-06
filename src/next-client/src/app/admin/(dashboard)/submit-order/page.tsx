@@ -16,13 +16,14 @@ import { MenuItemPicker } from "@/components/admin/submit-order/menu-item-picker
 import { ItemCustomizationSheet } from "@/components/admin/submit-order/item-customization-sheet";
 import { OrderSummaryPanel } from "@/components/admin/submit-order/order-summary-panel";
 
-const TAX_RATE = 0.0825;
+const DEFAULT_TAX_RATE = 0.0825;
 
 export default function SubmitOrderPage() {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [taxRate, setTaxRate] = useState(DEFAULT_TAX_RATE);
 
   // Order state
   const [orderItems, setOrderItems] = useState<CartItem[]>([]);
@@ -36,10 +37,11 @@ export default function SubmitOrderPage() {
   const [summaryOpen, setSummaryOpen] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.getCategories(), api.getMenuItems()])
-      .then(([cats, items]) => {
+    Promise.all([api.getCategories(), api.getMenuItems(), api.getPublicSettings()])
+      .then(([cats, items, settings]) => {
         setCategories(cats);
         setMenuItems(items);
+        setTaxRate(settings.taxRate);
       })
       .catch(() => toast.error("Failed to load menu"))
       .finally(() => setLoading(false));
@@ -103,7 +105,7 @@ export default function SubmitOrderPage() {
   // Computed
   const itemCount = orderItems.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = orderItems.reduce((sum, i) => sum + getLineTotal(i), 0);
-  const total = subtotal + Math.round(subtotal * TAX_RATE * 100) / 100;
+  const total = subtotal + Math.round(subtotal * taxRate * 100) / 100;
 
   if (loading) {
     return (
@@ -142,6 +144,7 @@ export default function SubmitOrderPage() {
             <OrderSummaryPanel
               items={orderItems}
               orderNotes={orderNotes}
+              taxRate={taxRate}
               onOrderNotesChange={setOrderNotes}
               onUpdateQuantity={handleUpdateQuantity}
               onRemoveItem={handleRemoveItem}
@@ -179,6 +182,7 @@ export default function SubmitOrderPage() {
             <OrderSummaryPanel
               items={orderItems}
               orderNotes={orderNotes}
+              taxRate={taxRate}
               onOrderNotesChange={setOrderNotes}
               onUpdateQuantity={handleUpdateQuantity}
               onRemoveItem={handleRemoveItem}

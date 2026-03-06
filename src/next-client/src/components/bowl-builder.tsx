@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Minus, Plus, Sparkles, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,20 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
     [menuItem.availableIngredients]
   );
 
+  const editingItem = cart.editingItem;
+  const isEditing = editingItem !== null && editingItem.menuItem.id === menuItem.id;
+
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
+    if (isEditing && editingItem.selectedIngredients) {
+      const init: Record<string, number> = {};
+      for (const ing of activeIngredients) {
+        init[ing.id] = 0;
+      }
+      for (const sel of editingItem.selectedIngredients) {
+        init[sel.id] = (init[sel.id] ?? 0) + 1;
+      }
+      return init;
+    }
     const init: Record<string, number> = {};
     for (const ing of activeIngredients) {
       init[ing.id] = ing.isDefault ? 1 : 0;
@@ -35,8 +48,27 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
     return init;
   });
 
-  const [bowlName, setBowlName] = useState("");
-  const [bowlQty, setBowlQty] = useState(1);
+  const [bowlName, setBowlName] = useState(isEditing ? (editingItem.notes ?? "") : "");
+  const [bowlQty, setBowlQty] = useState(isEditing ? editingItem.quantity : 1);
+  // Re-sync state when editingItem changes after mount (e.g., user clicks Edit from cart
+  // while BowlBuilder is already mounted on the same page)
+  useEffect(() => {
+    if (editingItem && editingItem.menuItem.id === menuItem.id) {
+      const init: Record<string, number> = {};
+      for (const ing of activeIngredients) {
+        init[ing.id] = 0;
+      }
+      if (editingItem.selectedIngredients) {
+        for (const sel of editingItem.selectedIngredients) {
+          init[sel.id] = (init[sel.id] ?? 0) + 1;
+        }
+      }
+      setQuantities(init);
+      setBowlName(editingItem.notes ?? "");
+      setBowlQty(editingItem.quantity);
+    }
+  }, [editingItem, menuItem.id, activeIngredients]);
+
   const [showOneOfEverythingGif, setShowOneOfEverythingGif] = useState(false);
   const gifTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -86,8 +118,6 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
     return groups;
   }, [activeIngredients]);
 
-  const TAX_RATE = 0.0825;
-
   const runningTotal = useMemo(() => {
     let total = 0;
     for (const ing of activeIngredients) {
@@ -98,8 +128,8 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
 
   const estimatedWithTax = useMemo(() => {
     const subtotal = runningTotal * bowlQty;
-    return Math.round((subtotal + subtotal * TAX_RATE) * 100) / 100;
-  }, [runningTotal, bowlQty]);
+    return Math.round((subtotal + subtotal * cart.taxRate) * 100) / 100;
+  }, [runningTotal, bowlQty, cart.taxRate]);
 
   const hasSelection = useMemo(
     () => Object.values(quantities).some((q) => q > 0),
@@ -129,20 +159,32 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
       }
     }
 
-    cart.addItem({
+    const itemData = {
       menuItem,
       variant: null,
       selectedIngredients: selected,
       quantity: bowlQty,
       notes: bowlName.trim() || null,
-    });
+    };
 
-    const qtyLabel = bowlQty > 1 ? ` x${bowlQty}` : "";
-    toast.success(
-      bowlName.trim()
-        ? `"${bowlName.trim()}"${qtyLabel} added to cart`
-        : `${menuItem.name}${qtyLabel} added to cart`
-    );
+    if (isEditing) {
+      cart.updateItem(editingItem.id, itemData);
+      cart.clearEditingItem();
+      const qtyLabel = bowlQty > 1 ? ` x${bowlQty}` : "";
+      toast.success(
+        bowlName.trim()
+          ? `"${bowlName.trim()}"${qtyLabel} updated`
+          : `${menuItem.name}${qtyLabel} updated`
+      );
+    } else {
+      cart.addItem(itemData);
+      const qtyLabel = bowlQty > 1 ? ` x${bowlQty}` : "";
+      toast.success(
+        bowlName.trim()
+          ? `"${bowlName.trim()}"${qtyLabel} added to cart`
+          : `${menuItem.name}${qtyLabel} added to cart`
+      );
+    }
 
     const reset: Record<string, number> = {};
     for (const ing of activeIngredients) {
@@ -155,7 +197,7 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-32">
       {/* Header */}
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold tracking-tight text-white">
@@ -237,9 +279,7 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
                   {/* Emoji + Name + Price */}
                   <div
                     className="flex flex-col items-center pt-4 pb-2 px-2 cursor-pointer"
-                    onClick={() =>
-                      qty === 0 ? updateQty(ing.id, 1) : updateQty(ing.id, -qty)
-                    }
+                    onClick={() => updateQty(ing.id, 1)}
                   >
                     <span className="text-3xl mb-2" role="img">
                       {getIngredientEmoji(ing.ingredientName)}
@@ -313,7 +353,7 @@ export function BowlBuilder({ menuItem, onItemAdded }: BowlBuilderProps) {
               onClick={handleAddToCart}
               disabled={!hasSelection}
             >
-              Add to Cart
+              {isEditing ? "Update Cart" : "Add to Cart"}
             </Button>
           </div>
         </div>

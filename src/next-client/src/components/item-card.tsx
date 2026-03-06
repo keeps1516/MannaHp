@@ -35,7 +35,7 @@ export function ItemCard({ item }: ItemCardProps) {
       <div className="group relative rounded-xl border border-[#1e3a5f] bg-[#163a50] p-4 transition-all duration-200 hover:border-[#00e5ff]/50 hover:shadow-[0_0_20px_rgba(0,229,255,0.1)] cursor-pointer">
         <div className="flex items-center gap-3">
           {/* Thumbnail */}
-          {item.imageUrl && (
+          {item.imageUrl ? (
             <div className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-[#0f1f35]">
               <Image
                 src={item.imageUrl}
@@ -44,6 +44,15 @@ export function ItemCard({ item }: ItemCardProps) {
                 className="object-cover"
                 sizes="56px"
               />
+            </div>
+          ) : (
+            <div
+              data-testid="item-thumbnail-fallback"
+              className="h-14 w-14 shrink-0 rounded-lg bg-gradient-to-br from-[#1e3a5f] to-[#0f1f35] flex items-center justify-center"
+            >
+              <span className="text-xl font-bold text-[#00e5ff]/60">
+                {item.name.charAt(0)}
+              </span>
             </div>
           )}
           <div className="flex-1 min-w-0">

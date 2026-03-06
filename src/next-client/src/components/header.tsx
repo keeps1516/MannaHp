@@ -39,8 +39,11 @@ export function Header() {
         >
           <ShoppingCart className="h-4 w-4" />
           {cart.itemCount > 0 && (
-            <span className="font-semibold text-sm">
-              ${cart.subtotal.toFixed(2)}
+            <span
+              data-testid="cart-badge"
+              className="font-semibold text-sm bg-[#00e5ff] text-[#0f1f35] rounded-full h-5 min-w-5 flex items-center justify-center px-1 text-xs"
+            >
+              {cart.itemCount}
             </span>
           )}
         </Button>

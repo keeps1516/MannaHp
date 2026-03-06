@@ -172,6 +172,104 @@ describe("CartContext", () => {
   });
 });
 
+describe("CartContext editingItem", () => {
+  let lastCart: ReturnType<typeof useCart>;
+  const capture = (cart: ReturnType<typeof useCart>) => { lastCart = cart; };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  function renderCart() {
+    render(
+      <CartProvider>
+        <CartConsumer onRender={capture} />
+      </CartProvider>
+    );
+  }
+
+  it("editingItem starts as null", () => {
+    renderCart();
+    expect(lastCart.editingItem).toBeNull();
+  });
+
+  it("setEditingItem stores the item being edited", () => {
+    renderCart();
+    act(() => lastCart.addItem(makeCartItemPayload()));
+    const item = lastCart.items[0];
+    act(() => lastCart.setEditingItem(item));
+    expect(lastCart.editingItem).not.toBeNull();
+    expect(lastCart.editingItem!.id).toBe(item.id);
+  });
+
+  it("clearEditingItem resets editingItem to null", () => {
+    renderCart();
+    act(() => lastCart.addItem(makeCartItemPayload()));
+    const item = lastCart.items[0];
+    act(() => lastCart.setEditingItem(item));
+    act(() => lastCart.clearEditingItem());
+    expect(lastCart.editingItem).toBeNull();
+  });
+
+  it("updateItem replaces an existing cart item by ID", () => {
+    renderCart();
+    act(() => lastCart.addItem(makeCartItemPayload({
+      menuItem: makeMenuItem({ isCustomizable: true, name: "Bowl" }),
+      variant: null,
+      selectedIngredients: [makeIngredient({ customerPrice: 3.0 })],
+      quantity: 1,
+      notes: "Old Bowl",
+    })));
+    const id = lastCart.items[0].id;
+
+    act(() => lastCart.updateItem(id, {
+      menuItem: makeMenuItem({ isCustomizable: true, name: "Bowl" }),
+      variant: null,
+      selectedIngredients: [
+        makeIngredient({ customerPrice: 3.0 }),
+        makeIngredient({ id: "ing-2", customerPrice: 2.0 }),
+      ],
+      quantity: 2,
+      notes: "Updated Bowl",
+    }));
+
+    expect(lastCart.items).toHaveLength(1);
+    expect(lastCart.items[0].id).toBe(id);
+    expect(lastCart.items[0].notes).toBe("Updated Bowl");
+    expect(lastCart.items[0].quantity).toBe(2);
+    expect(lastCart.items[0].selectedIngredients).toHaveLength(2);
+  });
+});
+
+describe("CartContext dynamic tax rate", () => {
+  let lastCart: ReturnType<typeof useCart>;
+  const capture = (cart: ReturnType<typeof useCart>) => { lastCart = cart; };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("uses initialTaxRate when provided", () => {
+    render(
+      <CartProvider initialTaxRate={0.10}>
+        <CartConsumer onRender={capture} />
+      </CartProvider>
+    );
+    act(() => lastCart.addItem(makeCartItemPayload({ variant: makeVariant({ price: 10.0 }) })));
+    expect(lastCart.taxRate).toBe(0.10);
+    expect(lastCart.tax).toBe(1.00); // 10 * 0.10 = 1.00
+  });
+
+  it("defaults to 0.0825 when no initialTaxRate provided", () => {
+    render(
+      <CartProvider>
+        <CartConsumer onRender={capture} />
+      </CartProvider>
+    );
+    expect(lastCart.taxRate).toBe(0.0825);
+  });
+});
+
 describe("CartContext localStorage persistence", () => {
   let lastCart: ReturnType<typeof useCart>;
   const capture = (cart: ReturnType<typeof useCart>) => { lastCart = cart; };

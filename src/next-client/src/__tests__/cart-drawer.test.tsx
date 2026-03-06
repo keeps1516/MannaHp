@@ -172,6 +172,45 @@ describe("CartDrawer", () => {
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
   });
 
+  it("Edit button sets editingItem instead of removing the item from cart", async () => {
+    const bowlItem = makeCartItem({
+      menuItem: {
+        ...makeCartItem().menuItem,
+        isCustomizable: true,
+        name: "Burrito Bowl",
+        categoryId: "cat-bowls",
+      },
+      variant: null,
+      selectedIngredients: [
+        {
+          id: "ing-1",
+          ingredientId: "raw-1",
+          ingredientName: "Rice",
+          customerPrice: 3.0,
+          quantityUsed: 10,
+          isDefault: false,
+          groupName: "Bases",
+          sortOrder: 1,
+          active: true,
+          ingredientUnit: 0,
+        },
+      ],
+    });
+    renderCartDrawer([bowlItem]);
+
+    const editBtn = screen.getByRole("button", { name: /edit/i });
+    fireEvent.click(editBtn);
+
+    // Should navigate to the category page
+    expect(pushMock).toHaveBeenCalledWith("/category/cat-bowls");
+
+    // Item should still be in the cart (not removed)
+    // The cart should still show the item since we only set editingItem, not removed it
+    await waitFor(() => {
+      expect(screen.queryByText("Your cart is empty")).not.toBeInTheDocument();
+    });
+  });
+
   it("shows empty state when no items", () => {
     renderCartDrawer([]);
     expect(screen.getByText("Your cart is empty")).toBeInTheDocument();

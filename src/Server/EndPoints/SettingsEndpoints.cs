@@ -16,6 +16,16 @@ public static class SettingsEndpoints
             return Results.Ok(settings.Select(s => new { s.Key, s.Value }));
         }).RequireAuthorization("Owner");
 
+        group.MapGet("/public", async (MannaDbContext db) =>
+        {
+            var taxRateSetting = await db.AppSettings
+                .FirstOrDefaultAsync(s => s.Key == "DefaultTaxRate");
+            var taxRate = taxRateSetting is not null
+                && decimal.TryParse(taxRateSetting.Value, out var parsed)
+                ? parsed : 0.0825m;
+            return Results.Ok(new { taxRate });
+        });
+
         group.MapPut("/", async (List<SettingUpdate> updates, MannaDbContext db) =>
         {
             var existing = await db.AppSettings.ToListAsync();

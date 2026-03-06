@@ -83,7 +83,7 @@ function renderFixed(item?: MenuItemDto) {
 describe("FixedItemDetail", () => {
   it("renders item name", () => {
     renderFixed();
-    expect(screen.getByText("Latte")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Latte" })).toBeInTheDocument();
   });
 
   it("renders description", () => {
@@ -149,5 +149,13 @@ describe("FixedItemDetail", () => {
     expect(
       screen.getByPlaceholderText("e.g., extra hot, oat milk, etc.")
     ).toBeInTheDocument();
+  });
+
+  it("shows styled fallback when no image is available", () => {
+    renderFixed(makeLatte({ imageUrl: null }));
+    // Should render a gradient/styled fallback instead of nothing
+    const fallback = screen.getByTestId("image-fallback");
+    expect(fallback).toBeInTheDocument();
+    expect(fallback.textContent).toContain("Latte");
   });
 });

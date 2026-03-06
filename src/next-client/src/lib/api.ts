@@ -22,6 +22,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getPublicSettings: () => fetchApi<{ taxRate: number }>("/api/settings/public"),
   getCategories: () => fetchApi<CategoryDto[]>("/api/categories"),
   getMenuItems: () => fetchApi<MenuItemDto[]>("/api/menu-items"),
   getMenuItem: (id: string) => fetchApi<MenuItemDto>(`/api/menu-items/${id}`),

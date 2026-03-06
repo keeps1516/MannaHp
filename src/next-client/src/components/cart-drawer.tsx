@@ -132,7 +132,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                             size="icon"
                             className="h-8 w-8 text-[#00e5ff] hover:text-[#00c8e0] hover:bg-[#00e5ff]/10"
                             onClick={() => {
-                              cart.removeItem(item.id);
+                              cart.setEditingItem(item);
                               onOpenChange(false);
                               router.push(`/category/${item.menuItem.categoryId}`);
                             }}
@@ -171,7 +171,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                 <span className="text-white">${cart.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#7a9bb5]">Tax (8.25%)</span>
+                <span className="text-[#7a9bb5]">Tax ({(cart.taxRate * 100).toFixed(2)}%)</span>
                 <span className="text-[#7a9bb5]">${cart.tax.toFixed(2)}</span>
               </div>
               <Separator className="bg-[#1e3a5f]" />
@@ -226,10 +226,10 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
             className="w-full h-full object-cover"
           />
           {confirmedOrderNumber && (
-            <div className="absolute bottom-16 left-0 right-0 text-center">
+            <div className="absolute top-[20%] left-0 right-0 text-center">
               <div className="inline-block bg-black/70 rounded-xl px-8 py-4 backdrop-blur-sm">
                 <p className="text-white text-sm mb-1">Your Order</p>
-                <p className="text-[#00e5ff] text-4xl font-bold">
+                <p className="text-[#00e5ff] text-5xl font-bold">
                   #{confirmedOrderNumber}
                 </p>
                 <p className="text-white/60 text-xs mt-2">

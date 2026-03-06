@@ -35,9 +35,21 @@ export default function OrderConfirmationPage() {
   }
 
   if (error || !order) {
+    const is404 = error?.includes("404");
     return (
-      <div className="rounded-lg border border-[#ff4757]/40 bg-[#ff4757]/10 p-4 text-[#ff4757] text-sm">
-        {error ?? "Order not found"}
+      <div className="text-center mt-12 space-y-4">
+        <p className="text-[#7a9bb5] text-lg">
+          {is404 ? "Order not found" : (error ?? "Order not found")}
+        </p>
+        {!is404 && error && (
+          <p className="text-sm text-[#ff4757]">{error}</p>
+        )}
+        <button
+          onClick={() => router.push("/")}
+          className="text-[#00e5ff] hover:underline text-sm"
+        >
+          Back to menu
+        </button>
       </div>
     );
   }
@@ -46,6 +58,9 @@ export default function OrderConfirmationPage() {
     <div className="max-w-lg mx-auto space-y-6 mt-4">
       <div className="text-center space-y-2">
         <CheckCircle className="h-16 w-16 text-[#00e5ff] mx-auto" />
+        <p className="text-4xl font-bold text-[#00e5ff]">
+          #{order.orderNumber}
+        </p>
         <h1 className="text-2xl font-bold text-white">Order Placed!</h1>
         <p className="text-[#7a9bb5]">
           Thank you for your order. It will be ready soon.

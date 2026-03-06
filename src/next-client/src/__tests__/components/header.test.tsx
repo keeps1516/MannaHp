@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { CartProvider } from "@/store/cart-context";
+import { render, screen, act } from "@testing-library/react";
+import { CartProvider, useCart } from "@/store/cart-context";
+import type { MenuItemDto, MenuItemVariantDto } from "@/types/api";
 
 // Mock next/image, next/link, and next/navigation (Header renders CartDrawer which uses useRouter)
 vi.mock("next/image", () => ({
@@ -43,12 +44,46 @@ describe("Header", () => {
     expect(screen.getByText("Manna + HP")).toBeInTheDocument();
   });
 
-  it("does not show subtotal when cart is empty", () => {
+  it("does not show badge when cart is empty", () => {
     render(
       <CartProvider>
         <Header />
       </CartProvider>
     );
-    expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("cart-badge")).not.toBeInTheDocument();
+  });
+
+  it("shows item count (not dollar amount) as cart badge", () => {
+    let cartRef: ReturnType<typeof useCart>;
+    function CartSetup() {
+      cartRef = useCart();
+      return null;
+    }
+
+    render(
+      <CartProvider>
+        <CartSetup />
+        <Header />
+      </CartProvider>
+    );
+
+    act(() => {
+      cartRef!.addItem({
+        menuItem: {
+          id: "mi-1", categoryId: "cat-1", name: "Latte", description: null,
+          imageUrl: null, imageApproximate: false, isCustomizable: false,
+          active: true, sortOrder: 0, variants: [], availableIngredients: null,
+        },
+        variant: { id: "v-1", name: "12oz", price: 4.75, sortOrder: 1, active: true },
+        selectedIngredients: null,
+        quantity: 2,
+        notes: null,
+      });
+    });
+
+    // Should show item count "2", not dollar amount "$9.50"
+    const badge = screen.getByTestId("cart-badge");
+    expect(badge.textContent).toBe("2");
+    expect(screen.queryByText("$9.50")).not.toBeInTheDocument();
   });
 });

@@ -71,4 +71,12 @@ describe("ItemCard", () => {
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute("href", "/item/item-1");
   });
+
+  it("shows a fallback thumbnail when imageUrl is null", () => {
+    render(<ItemCard item={makeItem({ imageUrl: null })} />);
+    // Should render a fallback thumbnail with the first letter of the item name
+    const fallback = screen.getByTestId("item-thumbnail-fallback");
+    expect(fallback).toBeInTheDocument();
+    expect(fallback.textContent).toContain("L");
+  });
 });
