@@ -331,3 +331,33 @@ export interface StoreTokenValidationResponse {
 export interface GenerateStoreTokenRequest {
   durationDays: number | null;
 }
+
+// ── TV Menu Config ──
+
+export interface TvMenuConfig {
+  visibleCategoryIds: string[];
+  hiddenItemIds: string[];
+  showAllIngredients: boolean;
+  orderOnlineUrl: string;
+  sampleBowls: Record<string, SampleBowlConfig>;
+}
+
+export interface SampleBowlConfig {
+  label: string;
+  ingredientIds: string[];
+}
+
+export interface ResolvedSampleBowl {
+  label: string;
+  ingredientIds: string[];
+  ingredientNames: string[];
+  calculatedPrice: number;
+}
+
+export interface TvMenuConfigResponse {
+  visibleCategoryIds: string[];
+  hiddenItemIds: string[];
+  showAllIngredients: boolean;
+  orderOnlineUrl: string;
+  sampleBowls: Record<string, ResolvedSampleBowl>;
+}

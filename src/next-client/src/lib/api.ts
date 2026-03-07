@@ -7,6 +7,7 @@ import type {
   StoreTokenResponse,
   StoreTokenValidationResponse,
   GenerateStoreTokenRequest,
+  TvMenuConfigResponse,
 } from "@/types/api";
 
 const API_BASE =
@@ -93,4 +94,8 @@ export const api = {
     fetchApi<StoreTokenValidationResponse>(
       `/api/store-tokens/${token}/validate`
     ),
+
+  // TV Menu Config
+  getTvMenuConfig: () =>
+    fetchApi<TvMenuConfigResponse>("/api/settings/tv-menu-config"),
 };

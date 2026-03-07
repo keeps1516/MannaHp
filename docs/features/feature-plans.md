@@ -26,6 +26,7 @@
 | G4 | QR Code In-Store Token Flow | [G4](#g4-qr-code-in-store-token-flow) | High - in-store ordering |
 | G12 | API Rate Limiting | [G12](#g12-api-rate-limiting) | Low - security hardening |
 | F15 | Email-Based Inventory Restocking | [F15](#f15-email-based-inventory-restocking) | Medium - automates supplier receipt processing |
+| F16 | TV Menu Board Display | [F16](#f16-tv-menu-board-display) | N/A - TV/kiosk display for in-store | ✅ |
 
 ---
 
@@ -1648,3 +1649,233 @@ Added to `docker-compose.yml` api service and `.env.example`. No new Docker cont
 1. **Unit tests:** Approve flow creates correct restock items; reject flow updates status; duplicate GmailMessageId is skipped
 2. **Integration test:** Mock Gmail + Claude API responses, verify pipeline from email -> pending receipt -> approve -> inventory updated with correct weighted-average costs
 3. **Manual E2E:** Label a test email in Gmail, click "Poll Now" or wait 15 min, review parsed items in admin UI, map to ingredients, approve, verify ingredient stock and inventory log updated
+
+---
+
+## F16: TV Menu Board Display
+
+**Priority:** F16
+**Status:** Complete
+**Created:** March 7, 2026
+
+### Problem
+
+The restaurant needs a menu displayed on an in-store TV so customers can browse items, see prices, and scan QR codes to place orders from their phone. Currently there is no TV-optimized display — only the mobile-first customer ordering app.
+
+### Solution
+
+A full-screen, dark-themed, 4K-optimized menu display page accessible from the admin panel. Shows menu items grouped by category in horizontal rows with large images, descriptions, variants, and prices. Includes QR codes for in-store ordering and online ordering. Admin controls which items/categories appear and configures a "sample bowl" pricing display for customizable items.
+
+### Requirements
+
+1. **Full-screen TV display page** at `/admin/tv-menu` (outside the dashboard layout — no sidebar, no header)
+2. **4K optimized** — large images (~300-400px), scaled-up text (1.5-2x normal)
+3. **Dark background** using existing theme palette (`#0f1f35` bg, `#163a50` cards, `#00e5ff` accents)
+4. **Category sections** — items grouped in horizontal rows by category, each with a category header
+5. **Item cards** — large image, name, short description, variant names + prices listed vertically
+6. **Customizable items (bowls)** — show admin-configured "sample bowl" label + calculated price, plus "Build Your Own" line
+7. **Ingredient list toggle** — admin can enable showing all available ingredients on the TV for bowls
+8. **Two QR codes** in the bottom-right corner:
+   - In-store ordering QR (reuses existing auto-regenerating `StoreToken`)
+   - Static "Order Online" QR (links to app URL)
+9. **Auto-refresh** — polls menu data every 5 minutes so changes appear without manual refresh
+10. **Admin TV settings page** at `/admin/tv-settings` for configuring visibility and sample bowls
+11. **Static page** — no animations, no auto-scroll, no rotation between categories
+12. **Out-of-stock and hidden items excluded** automatically
+
+### Design Decisions
+
+#### Pricing for Customizable Items (Bowls)
+
+Customizable items don't have a fixed price — it depends on ingredient selection. The TV displays a **sample bowl** configured by the admin:
+
+- Admin selects ingredients from the available list (reuses existing ingredient selection UI)
+- Admin enters a label (e.g., "Popular Bowl", "Simple Bowl")
+- Price auto-calculates from selected ingredient `customerPrice` values
+- TV displays: *"Popular Bowl: beef, rice, beans, cheese — $8.50"*
+- Also shows a "Build Your Own" line to indicate customizability
+- Price recalculates at display time (stays in sync if ingredient prices change)
+
+#### Config Storage
+
+All TV-specific config stored as JSON in the existing `app_settings` table (no schema changes):
+
+```json
+Key: "TvMenuConfig"
+Value: {
+  "visibleCategoryIds": [1, 3, 5],
+  "hiddenItemIds": [12, 15],
+  "showAllIngredients": false,
+  "orderOnlineUrl": "https://manna.example.com",
+  "sampleBowls": {
+    "7": {
+      "label": "Popular Bowl",
+      "ingredientIds": [1, 4, 7, 12]
+    }
+  }
+}
+```
+
+#### Item Count Handling
+
+With ~32 items (potentially more or fewer), the admin curates which items/categories appear on the TV. If the curated list still overflows the screen height, the page is scrollable (hidden scrollbar CSS). The admin is responsible for keeping the selection to a reasonable count that fits well at 4K.
+
+### API Changes
+
+**One new public endpoint:**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/settings/tv-menu-config` | Returns TV config JSON + resolved sample bowl prices |
+
+**Existing endpoints reused as-is:**
+
+| Method | Path | Used For |
+|--------|------|----------|
+| `GET` | `/api/categories` | Active categories |
+| `GET` | `/api/menu-items` | Active menu items with variants & available ingredients |
+| `GET` | `/api/store-tokens/current` | Current in-store QR token |
+| `GET` | `/api/settings` | Admin reads/writes TV config |
+| `PUT` | `/api/settings` | Admin saves TV config |
+
+### Component Reuse
+
+| Existing Component/Utility | Reused For |
+|---|---|
+| `item-card.tsx` → `getPriceLabel()`, `getVariantSummary()` | Price formatting logic (extract to shared util) |
+| Bowl builder ingredient selection UI | Sample bowl configurator in TV settings |
+| `qrcode.react` (from QR code page) | Both QR codes on TV display |
+| `admin-api.ts` → settings CRUD | Saving/loading TV config |
+| `api.ts` → `resolveImageUrl()` | Image URL resolution on TV display |
+| `category-meta.ts` → emoji mapping | Category headers on TV |
+
+### New Files
+
+```
+src/next-client/src/
+├── app/admin/(dashboard)/tv-settings/
+│   └── page.tsx                          -- TV settings/config page
+├── app/admin/tv-menu/
+│   └── page.tsx                          -- Full-screen TV display (outside dashboard layout)
+├── components/admin/
+│   ├── tv-settings-form.tsx              -- Category/item toggles + sample bowl config
+│   └── sample-bowl-configurator.tsx      -- Ingredient picker for sample bowl pricing
+└── components/tv/
+    ├── tv-menu-board.tsx                 -- Main TV layout (categories + items + QR)
+    ├── tv-category-section.tsx           -- Horizontal row for one category
+    ├── tv-item-card.tsx                  -- Large image card for TV display
+    └── tv-qr-footer.tsx                 -- Bottom-right QR code overlay
+```
+
+### Sidebar Update
+
+Add "TV Menu" nav item to admin sidebar between "QR Code" and "Settings":
+- Icon: `Tv` from lucide-react
+- Links to `/admin/tv-settings`
+- Separate "Launch TV Display" button on settings page opens `/admin/tv-menu` in a new tab
+
+### TV Display Layout
+
+```
++------------------------------------------------------------------+
+|                        MANNA + HP                                |
++------------------------------------------------------------------+
+|                                                                  |
+|  -- BOWLS --                                                     |
+|  +----------+  +----------+  +----------+  +----------+         |
+|  |  [image] |  |  [image] |  |  [image] |  |  [image] |         |
+|  |  Name    |  |  Name    |  |  Name    |  |  Name    |         |
+|  |  desc    |  |  desc    |  |  desc    |  |  desc    |         |
+|  |  Regular |  |  Popular |  |  Build   |  |  Small   |         |
+|  |  $8.50   |  |  Bowl    |  |  Your    |  |  $6.00   |         |
+|  |          |  |  $9.25   |  |  Own!    |  |  Large   |         |
+|  +----------+  +----------+  +----------+  +----------+  +------+
+|                                                          | QR 1 |
+|  -- COFFEE --                                            | Scan |
+|  +----------+  +----------+  +----------+  +----------+  | to   |
+|  |  [image] |  |  [image] |  |  [image] |  |  [image] |  | Order|
+|  |  Latte   |  |  Drip    |  |  Mocha   |  |  Cold    |  |------|
+|  |  sm $4   |  |  sm $3   |  |  sm $5   |  |  Brew    |  | QR 2 |
+|  |  lg $5   |  |  lg $4   |  |  lg $6   |  |  $4.50   |  | Order|
+|  +----------+  +----------+  +----------+  +----------+  | Site |
+|                                                          +------+
++------------------------------------------------------------------+
+```
+
+### TV Settings Page Layout
+
+```
++------------------------------------------------------------------+
+|  TV Menu Settings                                                |
+|                                                                  |
+|  [Launch TV Display ->]  (opens /admin/tv-menu in new tab)       |
+|                                                                  |
+|  -- Order Online URL --                                          |
+|  [ https://manna.example.com          ]                          |
+|                                                                  |
+|  -- Visible Categories --                                        |
+|  [x] Bowls                                                       |
+|  [x] Coffee                                                      |
+|  [ ] Seasonal Specials (hidden)                                  |
+|                                                                  |
+|  -- Visible Items --  (grouped by category)                      |
+|  Bowls:                                                          |
+|    [x] Burrito Bowl   [x] Rice Bowl   [ ] Kids Bowl             |
+|  Coffee:                                                         |
+|    [x] Latte   [x] Drip Coffee   [x] Mocha   [x] Cold Brew     |
+|                                                                  |
+|  -- Sample Bowl Config --  (for each customizable item)          |
+|  Burrito Bowl:                                                   |
+|    Label: [ Popular Bowl            ]                            |
+|    Ingredients: [x] Beef [x] Rice [x] Beans [x] Cheese          |
+|    Calculated price: $8.50                                       |
+|    Preview: "Popular Bowl: beef, rice, beans, cheese - $8.50"    |
+|                                                                  |
+|  [x] Show all available ingredients on TV                        |
+|                                                                  |
+|  [ Save Settings ]                                               |
++------------------------------------------------------------------+
+```
+
+### Implementation Order
+
+1. TV settings page — config form with category/item toggles and sample bowl configurator
+2. API endpoint — public TV config endpoint (or extend existing settings)
+3. TV display page — full-screen layout pulling menu data + config
+4. TV components — category sections, item cards, QR footer
+5. Sidebar link — add "TV Menu" nav entry
+6. Polish — 4K sizing, test with various item counts
+
+### Verification
+
+1. **Admin flow:** Navigate to TV Settings, toggle categories/items, configure sample bowl, save — verify config persists on reload
+2. **TV display:** Open TV display in new tab, verify correct items shown grouped by category with proper images/prices/variants
+3. **Sample bowl:** Verify calculated price matches sum of selected ingredient customerPrices; verify label and ingredient names display correctly
+4. **QR codes:** Verify in-store QR matches current store token; verify order online QR links to configured URL
+5. **Auto-refresh:** Change a menu item price in admin, wait 5 minutes, verify TV display updates
+6. **Out-of-stock:** Mark an item inactive, verify it disappears from TV display
+7. **4K test:** Open on a 4K display or scale browser to 3840x2160, verify layout fills screen properly with readable text and large images
+
+### Implementation Notes
+
+**Backend:**
+- `src/Server/EndPoints/SettingsEndpoints.cs`: Added `GET /api/settings/tv-menu-config` (anonymous) — reads `TvMenuConfig` JSON from `app_settings` table, resolves sample bowl prices from current `MenuItemAvailableIngredient` data. Also updated `PUT /api/settings` to create new settings keys (not just update existing), enabling first-time save of `TvMenuConfig`.
+- Config stored as JSON in `app_settings` with key `TvMenuConfig` — no schema migration needed.
+
+**Frontend — TV Display (`/admin/tv-menu`):**
+- `src/next-client/src/app/admin/tv-menu/layout.tsx`: Bare layout (no sidebar/header) for full-screen TV display.
+- `src/next-client/src/app/admin/tv-menu/page.tsx`: Fetches categories, menu items, TV config, and store token. Auto-refreshes every 5 minutes. Hides cursor after 3 seconds of inactivity.
+- `src/next-client/src/components/tv/tv-menu-board.tsx`: Main layout — filters categories/items based on config, renders category sections with right padding for QR codes.
+- `src/next-client/src/components/tv/tv-category-section.tsx`: Horizontal row of item cards per category with category name header and emoji.
+- `src/next-client/src/components/tv/tv-item-card.tsx`: 320px wide cards with large images (220px), item name, description, variant prices (fixed items), or sample bowl label + calculated price + "Build Your Own!" (customizable items). Optional ingredient list.
+- `src/next-client/src/components/tv/tv-qr-footer.tsx`: Fixed position bottom-right QR codes for in-store ordering (reuses existing store token) and order online URL.
+
+**Frontend — TV Settings (`/admin/tv-settings`):**
+- `src/next-client/src/app/admin/(dashboard)/tv-settings/page.tsx`: Admin config page with: order online URL input, category visibility checkboxes, item hide checkboxes (grouped by category), sample bowl configurator (label + ingredient picker with live price preview), "show all ingredients" toggle. Saves config as JSON to `TvMenuConfig` setting. "Launch TV Display" button opens `/admin/tv-menu` in a new tab.
+
+**Sidebar:**
+- `src/next-client/src/components/admin/sidebar.tsx`: Added "TV Menu" nav item with `Tv` icon between "QR Code" and "Settings".
+
+**Types & API:**
+- `src/next-client/src/types/api.ts`: Added `TvMenuConfig`, `SampleBowlConfig`, `ResolvedSampleBowl`, `TvMenuConfigResponse` types.
+- `src/next-client/src/lib/api.ts`: Added `getTvMenuConfig()` public method.

@@ -10,6 +10,7 @@ import {
   UtensilsCrossed,
   Wheat,
   QrCode,
+  Tv,
   Settings,
   LogOut,
   Menu,
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/admin/ingredients", label: "Ingredients", icon: Wheat },
   { href: "/admin/qr-code", label: "QR Code", icon: QrCode },
+  { href: "/admin/tv-settings", label: "TV Menu", icon: Tv },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
