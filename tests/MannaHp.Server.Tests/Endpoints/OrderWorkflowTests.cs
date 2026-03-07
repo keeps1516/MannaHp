@@ -22,7 +22,7 @@ public class OrderWorkflowTests
     public OrderWorkflowTests(MannaApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateStoreTokenClient();
     }
 
     private static CreateOrderRequest QuickOrder() =>

@@ -29,6 +29,7 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 	public DbSet<OrderItemIngredient> OrderItemIngredients => Set<OrderItemIngredient>();
 	public DbSet<AppSettings> AppSettings => Set<AppSettings>();
 	public DbSet<InventoryLog> InventoryLogs => Set<InventoryLog>();
+	public DbSet<StoreToken> StoreTokens => Set<StoreToken>();
 
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -243,7 +244,9 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 				new AppSettings { Id = Guid.Parse("e0000000-0003-0000-0000-000000000003"), Key = "StoreCity", Value = "Lindsay, OK 73052" },
 				new AppSettings { Id = Guid.Parse("e0000000-0004-0000-0000-000000000004"), Key = "StorePhone", Value = "(405) 208-2271" },
 				new AppSettings { Id = Guid.Parse("e0000000-0005-0000-0000-000000000005"), Key = "DefaultTaxRate", Value = "0.0825" },
-				new AppSettings { Id = Guid.Parse("e0000000-0006-0000-0000-000000000006"), Key = "ReceiptFooter", Value = "Our pleasure to serve you!" }
+				new AppSettings { Id = Guid.Parse("e0000000-0006-0000-0000-000000000006"), Key = "ReceiptFooter", Value = "Our pleasure to serve you!" },
+				new AppSettings { Id = Guid.Parse("e0000000-0007-0000-0000-000000000007"), Key = "StoreTokenDurationDays", Value = "7" },
+				new AppSettings { Id = Guid.Parse("e0000000-0008-0000-0000-000000000008"), Key = "StoreTokenRequiredMessage", Value = "Please scan the QR code at our counter to place an in-store order." }
 			);
 		});
 
@@ -263,6 +266,18 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 			e.HasOne(l => l.Ingredient)
 				.WithMany()
 				.HasForeignKey(l => l.IngredientId);
+		});
+
+		// ── StoreToken ──
+		modelBuilder.Entity<StoreToken>(e =>
+		{
+			e.ToTable("store_tokens");
+			e.HasKey(t => t.Id);
+			e.Property(t => t.Token).HasMaxLength(50).IsRequired();
+			e.HasIndex(t => t.Token).IsUnique();
+			e.Property(t => t.CreatedByUserId).HasMaxLength(450);
+			e.Property(t => t.Revoked).HasDefaultValue(false);
+			e.Property(t => t.CreatedAt).HasDefaultValueSql("now()");
 		});
 
 		// ── Seed Data ──

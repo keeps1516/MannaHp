@@ -155,7 +155,8 @@ public static class OrderEndpoints
             return Results.Created($"/api/orders/{order.Id}",
                 new CreateOrderResponse(dto, clientSecret,
                     req.PaymentMethod == PaymentMethod.Card ? stripe.PublishableKey : null));
-        }).AddEndpointFilter<ValidationFilter<CreateOrderRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateOrderRequest>>()
+          .RequireAuthorization("CanOrder");
 
         // POST — confirm payment (client calls after Stripe.confirmPayment succeeds)
         group.MapPost("/{id:guid}/confirm-payment", async (Guid id, MannaDbContext db,

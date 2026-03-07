@@ -20,7 +20,7 @@ public class SignalRTests
     public SignalRTests(MannaApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateStoreTokenClient();
     }
 
     private HubConnection CreateHubConnection()

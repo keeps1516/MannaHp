@@ -27,7 +27,7 @@ public class OrderPricingEdgeCaseTests
     public OrderPricingEdgeCaseTests(MannaApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateStoreTokenClient();
     }
 
     // ── Notes preserved on OrderItem ──────────────────────────────────

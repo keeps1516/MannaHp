@@ -241,9 +241,10 @@ public class AuthEndpointsTests
     }
 
     [Fact]
-    public async Task AnonymousEndpoint_PostOrder_Returns201()
+    public async Task StoreTokenEndpoint_PostOrder_Returns201()
     {
-        // Ordering doesn't require auth (in-store flow)
+        // In-store ordering requires a valid store token (QR code flow)
+        var storeTokenClient = _factory.CreateStoreTokenClient();
         var bowlId = Guid.Parse("c0000000-0001-0000-0000-000000000001");
         var riceId = Guid.Parse("e0000000-0001-0000-0000-000000000000");
 
@@ -251,7 +252,7 @@ public class AuthEndpointsTests
             MannaHp.Shared.Enums.PaymentMethod.InStore, null,
             [new CreateOrderItemRequest(bowlId, null, 1, null, [riceId])]);
 
-        var response = await _client.PostAsJsonAsync("/api/orders", req);
+        var response = await storeTokenClient.PostAsJsonAsync("/api/orders", req);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 }

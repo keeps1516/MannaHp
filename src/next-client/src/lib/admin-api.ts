@@ -7,6 +7,7 @@ import type {
   CreateIngredientRequest,
   CreateMenuItemRequest,
   CreateVariantRequest,
+  GenerateStoreTokenRequest,
   IngredientDto,
   InventoryLogDto,
   LoginRequest,
@@ -17,6 +18,7 @@ import type {
   OrderStatus,
   RegisterRequest,
   RestockRequest,
+  StoreTokenResponse,
   UpdateAvailableIngredientRequest,
   UpdateCategoryRequest,
   UpdateIngredientRequest,
@@ -318,4 +320,17 @@ export const adminApi = {
       token,
       { method: "DELETE" }
     ),
+
+  // ── Store Tokens ──
+  generateStoreToken: (token: string, req: GenerateStoreTokenRequest) =>
+    adminFetch<StoreTokenResponse>("/api/store-tokens", token, {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+
+  getCurrentStoreToken: (token: string) =>
+    adminFetch<StoreTokenResponse>("/api/store-tokens/current", token),
+
+  revokeStoreToken: (token: string, id: string) =>
+    adminFetchNoBody(`/api/store-tokens/${id}`, token, { method: "DELETE" }),
 };

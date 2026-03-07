@@ -9,6 +9,7 @@ import {
   ClipboardList,
   UtensilsCrossed,
   Wheat,
+  QrCode,
   Settings,
   LogOut,
   Menu,
@@ -25,6 +26,7 @@ const navItems = [
   { href: "/admin/submit-order", label: "New Order", icon: ClipboardList },
   { href: "/admin/menu", label: "Menu", icon: UtensilsCrossed },
   { href: "/admin/ingredients", label: "Ingredients", icon: Wheat },
+  { href: "/admin/qr-code", label: "QR Code", icon: QrCode },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

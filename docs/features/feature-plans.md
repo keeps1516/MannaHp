@@ -25,6 +25,7 @@
 | P14 | Menu Item Image Upload | [F14](#f14-menu-item-image-upload) | Medium - admin photo management |
 | G4 | QR Code In-Store Token Flow | [G4](#g4-qr-code-in-store-token-flow) | High - in-store ordering |
 | G12 | API Rate Limiting | [G12](#g12-api-rate-limiting) | Low - security hardening |
+| F15 | Email-Based Inventory Restocking | [F15](#f15-email-based-inventory-restocking) | Medium - automates supplier receipt processing |
 
 ---
 
@@ -774,6 +775,7 @@ All features should be designed mobile-first since customers primarily order on 
 **Source:** [undocumented-gaps.md](undocumented-gaps.md) (G4), [CLAUDE.md](../../CLAUDE.md) (QR Code In-Store Ordering section)
 **Priority:** Tier 1 — Needed Before Launch
 **Dependencies:** None (standalone feature)
+**Status:** ✅ Complete
 
 ### Overview
 
@@ -1051,6 +1053,45 @@ Modify order placement (`POST /api/orders`) to use a `CanOrder` policy that acce
 
 1. **Base URL configuration:** QR code needs the full public URL. Should come from `AppSettings` key `PublicBaseUrl` or an environment variable.
 2. **Token format:** Simple GUID (`Guid.NewGuid().ToString("N")`) or shorter nanoid-style string for friendlier URLs? GUIDs are fine since customers scan, not type.
+
+### Implementation Notes (Completed 2026-03-07)
+
+#### Architecture Decision: Dual Authentication Scheme
+The original plan called for a custom `IAuthorizationHandler` (`CanOrderAuthorizationHandler`). This approach **failed** because ASP.NET Core's JWT auth middleware returns 401 before the custom authorization handler ever runs for unauthenticated requests. The solution was to implement a proper `StoreTokenAuthenticationHandler` as a secondary **authentication scheme** alongside JWT, then configure the `CanOrder` policy to accept either scheme:
+
+```csharp
+// Program.cs — authentication config
+.AddScheme<AuthenticationSchemeOptions, StoreTokenAuthenticationHandler>("StoreToken", null);
+
+// CanOrder policy accepts either JWT or StoreToken scheme
+options.AddPolicy("CanOrder", policy => {
+    policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, "StoreToken");
+    policy.RequireAuthenticatedUser();
+});
+```
+
+The handler lives at `src/Server/Auth/StoreTokenAuthenticationHandler.cs` and reads the `X-Store-Token` header, validates it against the DB.
+
+#### Test Isolation
+Adding `RequireAuthorization("CanOrder")` to `POST /api/orders` broke all existing order tests (57 failures). Fixed by adding `CreateStoreTokenClient()` to `MannaApiFactory` — but using a **staff JWT** rather than an actual store token, since store token endpoint tests auto-revoke all active tokens, which would interfere with other test classes.
+
+#### Not Implemented
+- **Step 4 (Token Cleanup Job):** Hangfire/IHostedService to clean expired tokens >7 days old — deferred. Table stays small with manual revocation.
+- **Frontend tests:** `qr-code-page.test.tsx`, `store-token-checkout.test.tsx`, `api-store-token.test.ts` — deferred.
+- **Staff message editor on QR page:** The plan mentions a text area for editing `StoreTokenRequiredMessage` directly on the QR page. Currently, this is configured via the Settings page instead.
+
+#### Key Files Created
+- `src/Shared/Entities/StoreToken.cs` — entity
+- `src/Shared/DTOs/StoreTokenDto.cs` — request/response DTOs
+- `src/Server/Auth/StoreTokenAuthenticationHandler.cs` — custom auth handler
+- `src/Server/EndPoints/StoreTokenEndpoints.cs` — CRUD + validate endpoints
+- `src/next-client/src/app/admin/(dashboard)/qr-code/page.tsx` — admin QR management
+- `tests/MannaHp.Server.Tests/Endpoints/StoreTokenEndpointTests.cs` — 14 tests
+- `tests/MannaHp.Server.Tests/Endpoints/CanOrderAuthorizationTests.cs` — 7 tests
+
+#### Resolved Open Questions
+1. **Base URL:** Uses `NEXT_PUBLIC_BASE_URL` env var (defaults to `http://localhost:3000`)
+2. **Token format:** `Guid.NewGuid().ToString("N")` — customers scan, never type
 
 ---
 
@@ -1403,3 +1444,207 @@ All rate-limited responses return `429 Too Many Requests` with a `Retry-After` h
 - **No database changes.** Rate limiting is in-memory (fixed window counters). This is appropriate for a single-server deployment. If the app scales to multiple servers, switch to a distributed store (Redis) — but that's unlikely for this project.
 - **SignalR connections are not rate-limited.** WebSocket upgrades happen once and then maintain a persistent connection. The `/hubs/orders` endpoint is excluded.
 - **Stripe webhooks** are already authenticated via signature verification, so the `moderate` policy is a belt-and-suspenders measure against volume, not a security gate.
+
+---
+
+## F15: Email-Based Inventory Restocking
+
+**Status:** Planned
+**Complexity:** High
+**Dependencies:** F13 (Inventory Check-In / Receiving - completed)
+
+### Problem
+
+Restocking inventory is fully manual. The owner receives supplier delivery receipts via email and must re-enter every item, quantity, and cost into the admin UI by hand. This is tedious, error-prone, and delays inventory accuracy.
+
+### Solution
+
+Automate the pipeline: poll a Gmail inbox for emails tagged with a specific label, parse receipt content using Claude API (LLM), store parsed items for admin review/mapping, then apply to inventory via existing bulk-restock logic.
+
+### Architecture
+
+```
+Gmail (label: "supplier-orders")
+  -> Hangfire recurring job (every 15 min)
+    -> Gmail API reads new emails
+      -> Claude API extracts line items (name, qty, unit, cost)
+        -> Stored as SupplierReceipt (Pending) in DB
+          -> Admin reviews in UI, maps items to ingredients
+            -> Approve -> calls existing bulk-restock logic
+```
+
+### Key Design Decisions
+
+- **Gmail API + OAuth2** for email access (owner's single Gmail account, refresh token stored in config)
+- **Claude API (LLM) parsing** handles any receipt format (HTML, plain text, PDF) without brittle format-specific parsers
+- **Admin review before applying** prevents LLM errors from corrupting inventory
+- **Hangfire in-process** in the API container reuses existing PostgreSQL, no new infrastructure
+- **Raw email body stored** for re-parsing without re-fetching from Gmail
+- **Gmail label lifecycle** - label removed after processing; re-add label to re-process an email
+
+### New Entities
+
+#### `SupplierReceipt`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| GmailMessageId | string | Unique index, prevents re-processing |
+| EmailSubject | string? | |
+| EmailFrom | string? | |
+| EmailReceivedAt | DateTime | |
+| RawEmailBody | string | Stored for re-parsing |
+| Status | ReceiptStatus | Pending / Approved / Rejected |
+| ParsedAt | DateTime | |
+| ReviewedAt | DateTime? | |
+| ReviewedBy | string? | Admin user ID |
+| Notes | string? | |
+| CreatedAt | DateTime | |
+
+#### `SupplierReceiptItem`
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| SupplierReceiptId | Guid | FK -> SupplierReceipt |
+| ParsedName | string | Raw name from LLM |
+| ParsedQuantity | decimal | |
+| ParsedUnit | string | Raw unit text from receipt |
+| ParsedCostTotal | decimal | Total cost for this line |
+| IngredientId | Guid? | FK -> Ingredient (nullable, admin maps) |
+| MappedQuantity | decimal? | Admin-adjusted quantity |
+| MappedCostPaid | decimal? | Admin-adjusted cost |
+| Confidence | decimal? | LLM confidence score 0-1 |
+
+#### `ReceiptStatus` enum
+
+```
+Pending = 0, Approved = 1, Rejected = 2
+```
+
+### New API Endpoints
+
+All require Owner role.
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/supplier-receipts` | List receipts (filterable by status) |
+| GET | `/api/supplier-receipts/{id}` | Get receipt with items |
+| PATCH | `/api/supplier-receipts/{id}/items/{itemId}` | Update item mapping (ingredientId, qty, cost) |
+| POST | `/api/supplier-receipts/{id}/approve` | Approve -> bulk-restock all mapped items |
+| POST | `/api/supplier-receipts/{id}/reject` | Mark as Rejected |
+| POST | `/api/supplier-receipts/poll-now` | Trigger immediate email poll |
+
+### New Services
+
+#### `GmailService` (`src/Server/Services/GmailService.cs`)
+- OAuth2 refresh token auth via `Google.Apis.Gmail.v1`
+- `GetUnreadMessagesAsync(label)` - fetch messages with configured label
+- `GetMessageBodyAsync(messageId)` - extract text from MIME message
+- `MarkAsProcessedAsync(messageId)` - remove label after processing
+
+#### `ReceiptParsingService` (`src/Server/Services/ReceiptParsingService.cs`)
+- Sends email body + existing ingredient names/units to Claude API
+- Returns structured JSON: item name, quantity, unit, total cost, suggested ingredient match, confidence
+- Uses `claude-sonnet-4-20250514` (configurable)
+
+#### `InventoryService` (`src/Server/Services/InventoryService.cs`)
+- **Refactor:** Extract weighted-average cost + restock logic from `IngredientEndpoints.cs` bulk-restock
+- Shared by manual bulk-restock endpoint and receipt approve endpoint
+
+#### `GmailPollingJob` (`src/Server/Jobs/GmailPollingJob.cs`)
+- Hangfire recurring job, runs every 15 minutes
+- Fetches emails with label, skips duplicates by `GmailMessageId`
+- Calls `ReceiptParsingService`, creates `SupplierReceipt` + items as Pending
+- Auto-populates `IngredientId` from LLM suggestion for admin to confirm
+
+### Hangfire Setup
+
+**NuGet packages:** `Hangfire.Core`, `Hangfire.AspNetCore`, `Hangfire.PostgreSql`
+
+- Configured in `Program.cs` with PostgreSQL storage (reuses existing DB)
+- Dashboard at `/hangfire` (Owner auth)
+- Recurring job: `*/15 * * * *`
+
+### Admin UI
+
+#### Deliveries list page (`src/next-client/src/app/admin/(dashboard)/deliveries/page.tsx`)
+- Table of receipts: subject, sender, date, status badge, item count
+- Filter by status (Pending first)
+- "Poll Now" button
+
+#### Delivery detail/review page (`src/next-client/src/app/admin/(dashboard)/deliveries/[id]/page.tsx`)
+- Receipt metadata (subject, sender, date)
+- Table of parsed items:
+  - Parsed name, qty, unit, cost (read-only from LLM)
+  - Ingredient dropdown (pre-selected from LLM suggestion)
+  - Editable mapped quantity and cost fields
+  - Confidence badge (green/yellow/red)
+  - Unit mismatch warning
+- "Approve & Restock" button with confirmation dialog
+- "Reject" button
+
+#### Navigation
+- Add "Deliveries" nav item in admin sidebar with Truck icon, after Ingredients
+
+### Configuration (env vars)
+
+```
+GMAIL_CLIENT_ID
+GMAIL_CLIENT_SECRET
+GMAIL_REFRESH_TOKEN
+GMAIL_LABEL_NAME (default: "supplier-orders")
+GMAIL_EMAIL_ADDRESS
+ANTHROPIC_API_KEY
+ANTHROPIC_MODEL (default: "claude-sonnet-4-20250514")
+```
+
+Added to `docker-compose.yml` api service and `.env.example`. No new Docker containers needed.
+
+### Implementation Phases
+
+| Phase | Description | Depends On |
+|-------|-------------|------------|
+| 1 | New entities, enum, EF migration, DB schema | - |
+| 2 | Extract `InventoryService` from bulk-restock endpoint (refactor) | Phase 1 |
+| 3 | `SupplierReceiptEndpoints` CRUD + approve/reject | Phase 2 |
+| 4 | Hangfire setup + stub polling job | Phase 3 |
+| 5 | Gmail API integration (`GmailService`) | Phase 4 |
+| 6 | Claude API parsing (`ReceiptParsingService`) | Phase 5 |
+| 7 | Admin UI (deliveries list + detail/review pages) | Phase 3 |
+| 8 | Docker/config changes, `.env.example` updates | Phase 5, 6 |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/Server/EndPoints/IngredientEndpoints.cs` | Extract restock logic to InventoryService |
+| `src/Server/Data/MannaDbContext.cs` | Add DbSets + EF config for new entities |
+| `src/Server/Program.cs` | Add Hangfire config, endpoint mapping |
+| `src/next-client/src/lib/admin-api.ts` | Add supplier receipt API methods |
+| `src/next-client/src/types/api.ts` | Add receipt DTOs/types |
+| `src/next-client/src/components/admin/sidebar.tsx` | Add Deliveries nav item |
+| `docker-compose.yml` | Add Gmail + Anthropic env vars |
+| `.env.example` | Add placeholder entries |
+
+### New Files
+
+| File | Description |
+|------|-------------|
+| `src/Shared/Enums/ReceiptStatus.cs` | ReceiptStatus enum |
+| `src/Shared/Entities/SupplierReceipt.cs` | SupplierReceipt entity |
+| `src/Shared/Entities/SupplierReceiptItem.cs` | SupplierReceiptItem entity |
+| `src/Shared/DTOs/SupplierReceiptDto.cs` | DTOs for receipt + items |
+| `src/Server/Services/InventoryService.cs` | Extracted restock logic |
+| `src/Server/Services/GmailService.cs` | Gmail API integration |
+| `src/Server/Services/ReceiptParsingService.cs` | Claude API receipt parser |
+| `src/Server/Jobs/GmailPollingJob.cs` | Hangfire recurring job |
+| `src/Server/EndPoints/SupplierReceiptEndpoints.cs` | Receipt API endpoints |
+| `src/next-client/src/app/admin/(dashboard)/deliveries/page.tsx` | Deliveries list page |
+| `src/next-client/src/app/admin/(dashboard)/deliveries/[id]/page.tsx` | Delivery review page |
+
+### Verification
+
+1. **Unit tests:** Approve flow creates correct restock items; reject flow updates status; duplicate GmailMessageId is skipped
+2. **Integration test:** Mock Gmail + Claude API responses, verify pipeline from email -> pending receipt -> approve -> inventory updated with correct weighted-average costs
+3. **Manual E2E:** Label a test email in Gmail, click "Poll Now" or wait 15 min, review parsed items in admin UI, map to ingredients, approve, verify ingredient stock and inventory log updated

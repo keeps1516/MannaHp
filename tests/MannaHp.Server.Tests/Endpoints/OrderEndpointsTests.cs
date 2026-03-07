@@ -39,7 +39,7 @@ public class OrderEndpointsTests
     public OrderEndpointsTests(MannaApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateStoreTokenClient();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

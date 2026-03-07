@@ -4,6 +4,9 @@ import type {
   OrderDto,
   CreateOrderRequest,
   CreateOrderResponse,
+  StoreTokenResponse,
+  StoreTokenValidationResponse,
+  GenerateStoreTokenRequest,
 } from "@/types/api";
 
 const API_BASE =
@@ -21,10 +24,37 @@ export function resolveImageUrl(imageUrl: string): string {
   return imageUrl;
 }
 
+function getStoreToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("storeToken");
+}
+
+export function captureStoreTokenFromUrl(): void {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  if (token) {
+    localStorage.setItem("storeToken", token);
+    // Clean the URL without reloading
+    const url = new URL(window.location.href);
+    url.searchParams.delete("token");
+    window.history.replaceState({}, "", url.toString());
+  }
+}
+
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  const storeToken = getStoreToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+  if (storeToken) {
+    headers["X-Store-Token"] = storeToken;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
     ...options,
+    headers,
   });
   if (!res.ok) {
     const errorBody = await res.text();
@@ -48,4 +78,19 @@ export const api = {
     fetchApi<OrderDto>(`/api/orders/${orderId}/confirm-payment`, {
       method: "POST",
     }),
+
+  // Store tokens
+  generateStoreToken: (req: GenerateStoreTokenRequest) =>
+    fetchApi<StoreTokenResponse>("/api/store-tokens", {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+  getCurrentStoreToken: () =>
+    fetchApi<StoreTokenResponse>("/api/store-tokens/current"),
+  revokeStoreToken: (id: string) =>
+    fetchApi<void>(`/api/store-tokens/${id}`, { method: "DELETE" }),
+  validateStoreToken: (token: string) =>
+    fetchApi<StoreTokenValidationResponse>(
+      `/api/store-tokens/${token}/validate`
+    ),
 };

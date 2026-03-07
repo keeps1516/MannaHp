@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using MannaHp.Server.Data;
 using MannaHp.Shared.DTOs;
+using MannaHp.Shared.Entities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,6 +19,7 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     // Cached tokens so we don't re-login on every request
     private string? _ownerToken;
     private string? _staffToken;
+    private string? _storeToken;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -69,6 +71,18 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await userManager.CreateAsync(staff, "MannaStaff123!");
         await userManager.AddToRoleAsync(staff, "Staff");
 
+        // Seed an active store token for tests that need anonymous ordering
+        var testDb = scope.ServiceProvider.GetRequiredService<MannaDbContext>();
+        _storeToken = Guid.NewGuid().ToString("N");
+        testDb.StoreTokens.Add(new StoreToken
+        {
+            Id = Guid.NewGuid(),
+            Token = _storeToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+            CreatedByUserId = null,
+        });
+        await testDb.SaveChangesAsync();
+
         // Clear cached tokens
         _ownerToken = null;
         _staffToken = null;
@@ -92,6 +106,19 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public async Task<HttpClient> CreateStaffClientAsync()
     {
         _staffToken ??= await LoginAsync("staff@manna.local", "MannaStaff123!");
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", _staffToken);
+        return client;
+    }
+
+    /// <summary>
+    /// Returns an HttpClient that can place orders (satisfies CanOrder policy).
+    /// Uses staff JWT since store tokens may be revoked by StoreTokenEndpoint tests.
+    /// </summary>
+    public HttpClient CreateStoreTokenClient()
+    {
+        _staffToken ??= LoginAsync("staff@manna.local", "MannaStaff123!").GetAwaiter().GetResult();
         var client = CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", _staffToken);

@@ -124,8 +124,9 @@ public class AuthorizationTests
     [Fact]
     public async Task Anonymous_UpdateOrderStatus_Returns401()
     {
-        // Create an order first (this is allowed anonymously)
-        var createResp = await _client.PostAsJsonAsync("/api/orders",
+        // Create an order first (requires store token for CanOrder policy)
+        var orderClient = _factory.CreateStoreTokenClient();
+        var createResp = await orderClient.PostAsJsonAsync("/api/orders",
             new CreateOrderRequest(PaymentMethod.InStore, null,
                 [new CreateOrderItemRequest(MiChips, VChips, 1, null, null)]));
         var order = (await createResp.Content.ReadFromJsonAsync<CreateOrderResponse>())!.Order;

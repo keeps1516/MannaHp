@@ -312,3 +312,22 @@ export interface BulkRestockItem {
 export interface BulkRestockRequest {
   items: BulkRestockItem[];
 }
+
+// ── Store Tokens ──
+
+export interface StoreTokenResponse {
+  id: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+  createdByUserId: string | null;
+}
+
+export interface StoreTokenValidationResponse {
+  valid: boolean;
+  expiresAt: string | null;
+}
+
+export interface GenerateStoreTokenRequest {
+  durationDays: number | null;
+}

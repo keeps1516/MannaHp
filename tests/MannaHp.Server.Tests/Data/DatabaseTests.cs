@@ -14,6 +14,7 @@ namespace MannaHp.Server.Tests.Data;
 public class DatabaseTests
 {
     private readonly HttpClient _client;
+    private readonly HttpClient _orderClient;
     private readonly MannaApiFactory _factory;
 
     // Known seed GUIDs
@@ -24,6 +25,7 @@ public class DatabaseTests
     {
         _factory = factory;
         _client = factory.CreateClient();
+        _orderClient = factory.CreateStoreTokenClient();
     }
 
     // ── Seed data creates expected categories ─────────────────────────
@@ -68,7 +70,7 @@ public class DatabaseTests
         var req = new CreateOrderRequest(PaymentMethod.InStore, null,
             [new CreateOrderItemRequest(MiChips, VChips, 1, null, null)]);
 
-        var response = await _client.PostAsJsonAsync("/api/orders", req);
+        var response = await _orderClient.PostAsJsonAsync("/api/orders", req);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<CreateOrderResponse>();
@@ -111,7 +113,7 @@ public class DatabaseTests
 
         // Create 5 orders concurrently
         var tasks = Enumerable.Range(0, 5).Select(_ =>
-            _client.PostAsJsonAsync("/api/orders", req));
+            _orderClient.PostAsJsonAsync("/api/orders", req));
 
         var responses = await Task.WhenAll(tasks);
 
