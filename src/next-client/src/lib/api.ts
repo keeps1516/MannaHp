@@ -11,12 +11,14 @@ const API_BASE =
 
 /**
  * Resolves a menu item image URL to a full URL.
- * Uploaded images are relative paths like `/uploads/menu/...` served from the API.
- * Static images like `/menu/...` are also served from the API's wwwroot.
+ * Uploaded images (`/uploads/...`) are served by the API server and need the API base URL.
+ * Other relative paths (e.g. `/menu/...`) are static assets in Next.js public/ dir
+ * and must remain relative so the browser fetches them from the same origin.
  */
 export function resolveImageUrl(imageUrl: string): string {
   if (imageUrl.startsWith("http")) return imageUrl;
-  return `${API_BASE}${imageUrl}`;
+  if (imageUrl.startsWith("/uploads/")) return `${API_BASE}${imageUrl}`;
+  return imageUrl;
 }
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {

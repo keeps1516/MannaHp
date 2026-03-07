@@ -739,7 +739,7 @@
 - `docker-compose.yml`: Added `uploads` Docker volume mounted at `/app/wwwroot/uploads` for persistence across container rebuilds.
 
 **Frontend changes:**
-- `src/next-client/src/lib/api.ts`: Added `resolveImageUrl()` helper that prepends `NEXT_PUBLIC_API_URL` for relative image paths. Used by all components that display menu item images.
+- `src/next-client/src/lib/api.ts`: Added `resolveImageUrl()` helper. Only prepends `NEXT_PUBLIC_API_URL` for `/uploads/...` paths (API-served uploaded images). Other relative paths (e.g. `/menu/...` seed images) are left as-is so they resolve against the Next.js origin. Used by all components that display menu item images.
 - `src/next-client/src/lib/admin-api.ts`: Added `uploadMenuItemImage()` (multipart/form-data POST) and `deleteMenuItemImage()` methods.
 - `src/next-client/src/components/admin/menu-item-form-sheet.tsx`: Added image section at top of edit form — upload zone when no image, preview with Change/Remove buttons when image exists, "Not an accurate image" checkbox for `imageApproximate`.
 - `src/next-client/src/components/admin/menu-item-list.tsx`: Added 32x32 image thumbnails before item names in the grid, with letter fallback when no image.
