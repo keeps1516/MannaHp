@@ -83,42 +83,24 @@
 
 ---
 
-## F2: Merge Active Orders Cards on Admin Dashboard
+## F2: Merge Active Orders Cards on Admin Dashboard ✅
 
+**Status:** Complete
 **UX Evaluation Ref:** [Enhancement #26](../ux-evaluation.md) - "Merge Active Orders card and View Active Orders into the same"
 **Priority:** P2
 **Mobile Impact:** High - fewer cards = less scrolling on mobile
 
-### Current State
-- Admin dashboard (`/admin`) has two separate cards related to orders:
-  1. "Active Orders" stat card (shows count, cyan themed)
-  2. A quick-link card that navigates to `/admin/orders`
-- Both use `adminApi.getActiveOrders()` data
+### Implementation Notes
+- Merged "Active Orders" stat card and "View Active Orders" quick-link into a single clickable card
+- Card links to `/admin/orders`, shows total count + status breakdown (e.g., "2 Received · 1 Preparing · 3 Ready")
+- Card is the first in the stats grid (`data-testid="orders-card"`)
+- Removed redundant "View Active Orders" quick-link; quick-links grid now shows 2 items (Menu, Inventory)
+- Added `computeBreakdown()` helper using `OrderStatus` enum to count Received/Preparing/Ready
+- Breakdown text only shows statuses with count > 0
 
-### Plan
-
-#### Step 1: Merge into single clickable card
-- **File:** `src/next-client/src/app/admin/(dashboard)/page.tsx`
-- Combine both order cards into one card that:
-  - Shows the active order count prominently
-  - Is clickable — navigates to `/admin/orders`
-  - Positioned as the first card on the page
-  - Shows a mini breakdown: e.g., "3 Received, 1 Preparing, 2 Ready"
-
-#### Step 2: Remove the redundant quick-link card
-- Delete the second orders navigation card
-- Adjust grid layout so remaining cards fill evenly
-
-### Tests (Write Before Implementation)
-
-#### Unit Tests — `src/next-client/src/__tests__/components/admin-dashboard.test.tsx`
-```
-1. renders a single orders card (not two separate ones)
-2. orders card displays active order count
-3. orders card shows status breakdown (Received/Preparing/Ready counts)
-4. orders card is clickable and links to /admin/orders
-5. orders card is the first card in the grid
-```
+### Files Modified
+- `src/next-client/src/app/admin/(dashboard)/page.tsx` — merged card, removed quick-link, added breakdown logic
+- `src/next-client/src/__tests__/components/admin-dashboard.test.tsx` — 5 new tests (7 total)
 
 ---
 

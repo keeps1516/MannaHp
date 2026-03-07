@@ -11,10 +11,31 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/store/auth-context";
 import { adminApi } from "@/lib/admin-api";
+import { OrderStatus } from "@/types/api";
+import type { OrderDto } from "@/types/api";
+
+interface OrderBreakdown {
+  total: number;
+  received: number;
+  preparing: number;
+  ready: number;
+}
+
+function computeBreakdown(orders: OrderDto[]): OrderBreakdown {
+  let received = 0;
+  let preparing = 0;
+  let ready = 0;
+  for (const o of orders) {
+    if (o.status === OrderStatus.Received) received++;
+    else if (o.status === OrderStatus.Preparing) preparing++;
+    else if (o.status === OrderStatus.Ready) ready++;
+  }
+  return { total: orders.length, received, preparing, ready };
+}
 
 export default function AdminDashboardPage() {
   const { user, token } = useAuth();
-  const [activeOrders, setActiveOrders] = useState<number | null>(null);
+  const [orderBreakdown, setOrderBreakdown] = useState<OrderBreakdown | null>(null);
   const [lowStockCount, setLowStockCount] = useState<number | null>(null);
   const [todayRevenue, setTodayRevenue] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +49,7 @@ export default function AdminDashboardPage() {
         adminApi.getTodayRevenue(token),
       ]);
 
-      setActiveOrders(orders.length);
+      setOrderBreakdown(computeBreakdown(orders));
       setLowStockCount(
         ingredients.filter(
           (i) => i.active && i.stockQuantity < i.lowStockThreshold
@@ -57,13 +78,40 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <DashboardCard
-          title="Active Orders"
-          value={loading ? null : String(activeOrders ?? "0")}
-          icon={<ShoppingBag className="h-5 w-5 text-[#00e5ff]" />}
-          iconBg="bg-[#00e5ff]/10"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="stats-grid">
+        {/* Active Orders — merged card (clickable) */}
+        <Link href="/admin/orders" className="group">
+          <div
+            data-testid="orders-card"
+            className="rounded-lg border border-white/10 bg-[#0d1f3c] p-5 space-y-3 group-hover:border-[#00e5ff]/30 transition-colors"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-[#7a9bb5]">Active Orders</p>
+              <div className="h-9 w-9 rounded-lg bg-[#00e5ff]/10 flex items-center justify-center">
+                <ShoppingBag className="h-5 w-5 text-[#00e5ff]" />
+              </div>
+            </div>
+            {loading || !orderBreakdown ? (
+              <Loader2 className="h-5 w-5 animate-spin text-[#7a9bb5]" />
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-white">{orderBreakdown.total}</p>
+                {orderBreakdown.total > 0 && (
+                  <p className="text-xs text-[#7a9bb5]">
+                    {[
+                      orderBreakdown.received > 0 && `${orderBreakdown.received} Received`,
+                      orderBreakdown.preparing > 0 && `${orderBreakdown.preparing} Preparing`,
+                      orderBreakdown.ready > 0 && `${orderBreakdown.ready} Ready`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </Link>
+
         <DashboardCard
           title="Low Stock Items"
           value={loading ? null : String(lowStockCount ?? "0")}
@@ -80,13 +128,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <QuickLink
-          href="/admin/orders"
-          title="View Active Orders"
-          description="Manage the order queue"
-          color="text-[#00e5ff]"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <QuickLink
           href="/admin/menu"
           title="Manage Menu"
