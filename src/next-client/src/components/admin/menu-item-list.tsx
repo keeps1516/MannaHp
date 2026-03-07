@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
+import { resolveImageUrl } from "@/lib/api";
 import { useAuth } from "@/store/auth-context";
 import { MenuItemFormSheet } from "@/components/admin/menu-item-form-sheet";
 import { VariantSection } from "@/components/admin/variant-section";
@@ -205,6 +206,27 @@ export function MenuItemList({ categories }: MenuItemListProps) {
                               <ChevronDown className="h-4 w-4" />
                             ) : (
                               <ChevronRight className="h-4 w-4" />
+                            )}
+                          </div>
+
+                          {/* Thumbnail */}
+                          <div
+                            data-testid={`item-thumbnail-${item.id}`}
+                            className="h-8 w-8 shrink-0 rounded overflow-hidden bg-[#0f1f35]"
+                          >
+                            {item.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={resolveImageUrl(item.imageUrl)}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-xs font-bold text-[#00e5ff]/60">
+                                  {item.name.charAt(0)}
+                                </span>
+                              </div>
                             )}
                           </div>
 

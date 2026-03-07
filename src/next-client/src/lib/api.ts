@@ -9,6 +9,16 @@ import type {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5082";
 
+/**
+ * Resolves a menu item image URL to a full URL.
+ * Uploaded images are relative paths like `/uploads/menu/...` served from the API.
+ * Static images like `/menu/...` are also served from the API's wwwroot.
+ */
+export function resolveImageUrl(imageUrl: string): string {
+  if (imageUrl.startsWith("http")) return imageUrl;
+  return `${API_BASE}${imageUrl}`;
+}
+
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...options?.headers },

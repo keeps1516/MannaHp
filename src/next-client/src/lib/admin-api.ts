@@ -206,6 +206,36 @@ export const adminApi = {
   deleteMenuItem: (token: string, id: string) =>
     adminFetchNoBody(`/api/menu-items/${id}`, token, { method: "DELETE" }),
 
+  uploadMenuItemImage: async (token: string, menuItemId: string, file: File): Promise<MenuItemDto> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${API_BASE}/api/menu-items/${menuItemId}/image`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    if (res.status === 401) {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("admin_token");
+        window.location.href = "/admin/login";
+      }
+      throw new Error("Unauthorized");
+    }
+
+    if (!res.ok) {
+      const errorBody = await res.text();
+      throw new Error(`API error ${res.status}: ${errorBody}`);
+    }
+
+    return res.json();
+  },
+
+  deleteMenuItemImage: async (token: string, menuItemId: string): Promise<void> => {
+    await adminFetchNoBody(`/api/menu-items/${menuItemId}/image`, token, { method: "DELETE" });
+  },
+
   // ── Variants ──
   createVariant: (token: string, menuItemId: string, req: CreateVariantRequest) =>
     adminFetch<MenuItemVariantDto>(

@@ -10,6 +10,7 @@ import { QuantitySelector } from "@/components/quantity-selector";
 import { useCart } from "@/store/cart-context";
 import { getIngredientEmoji } from "@/lib/ingredient-emoji";
 import { formatMeasurement } from "@/lib/unit-label";
+import { resolveImageUrl } from "@/lib/api";
 import type {
   MenuItemDto,
   MenuItemVariantDto,
@@ -150,7 +151,7 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
       {menuItem.imageUrl ? (
         <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#163a50]">
           <Image
-            src={menuItem.imageUrl}
+            src={resolveImageUrl(menuItem.imageUrl)}
             alt={menuItem.name}
             fill
             className="object-cover"

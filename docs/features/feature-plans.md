@@ -21,6 +21,8 @@
 | P10 | Breadcrumb navigation on item pages | [F10](#f10-breadcrumb-navigation-on-item-pages) | Medium - orientation |
 | P11 | Revenue / analytics dashboard | [F11](#f11-revenue--analytics-dashboard) | Medium - owner insight |
 | P12 | "Recently Ordered" / Order Again | [F12](#f12-recently-ordered--order-again) | High - requires auth first |
+| P13 | Inventory Check-In / Receiving | [F13](#f13-inventory-check-in--receiving) | High - restocking workflow |
+| P14 | Menu Item Image Upload | [F14](#f14-menu-item-image-upload) | Medium - admin photo management |
 
 ---
 
@@ -620,6 +622,228 @@
 
 ---
 
+## F14: Menu Item Image Upload
+
+**Priority:** P14
+**Status:** COMPLETED
+**Mobile Impact:** Medium - admin may snap a photo on their phone and upload directly
+
+### Current State
+- `MenuItem` entity has `ImageUrl` (string, nullable) and `ImageApproximate` (bool) fields
+- Seed data populates `ImageUrl` with static paths like `/menu/burrito-bowl.jpg` — these are placeholder/stock images
+- `ImageApproximate` was seeded as `true` for all items (indicating the image is not an actual photo of the dish)
+- **No file upload endpoint exists** — there is no `IFormFile`, `multipart/form-data`, or any upload handling in the codebase
+- The admin `MenuItemFormSheet` does **not** expose `ImageUrl` or `ImageApproximate` — when editing, it silently passes through the existing `imageUrl` value unchanged; when creating, it sends `imageUrl: null`
+- The admin `MenuItemList` grid shows no image thumbnail or any indication of what image (if any) is set
+- Customer-facing `ItemCard` renders the image via Next.js `<Image>` if `imageUrl` is set, otherwise shows a letter fallback
+- `FixedItemDetail` also displays the image if available
+
+### Plan
+
+#### Step 1: Add image upload endpoint
+- **File:** `src/Server/EndPoints/MenuItemEndpoints.cs`
+- `POST /api/menu-items/{id}/image`
+  - Accepts `multipart/form-data` with a single image file
+  - Validates: file size (max 5 MB), allowed types (JPEG, PNG, WebP)
+  - Saves file to a local directory on disk (e.g., `wwwroot/uploads/menu/`)
+  - Generates a unique filename: `{menuItemId}-{timestamp}.{ext}` (prevents caching issues on update)
+  - Deletes the previous image file if one exists
+  - Updates `MenuItem.ImageUrl` to `/uploads/menu/{filename}`
+  - Owner authorization
+  - Returns updated `MenuItemDto`
+
+#### Step 2: Add image delete endpoint
+- **File:** `src/Server/EndPoints/MenuItemEndpoints.cs`
+- `DELETE /api/menu-items/{id}/image`
+  - Deletes the image file from disk
+  - Sets `MenuItem.ImageUrl = null`, `MenuItem.ImageApproximate = false`
+  - Owner authorization
+
+#### Step 3: Serve uploaded images via static files
+- **File:** `src/Server/Program.cs`
+- Configure `UseStaticFiles` to serve `wwwroot/uploads/` directory
+- Add appropriate cache headers for uploaded images
+
+#### Step 4: Add upload UI to admin menu item form
+- **File:** `src/next-client/src/components/admin/menu-item-form-sheet.tsx`
+- Add an image section at the top of the form:
+  - If image exists: show a preview thumbnail (120x120) with "Change" and "Remove" buttons
+  - If no image: show an upload drop zone / file picker with camera icon
+  - "Change" opens the file picker; selecting a file shows a **confirmation dialog** with a side-by-side preview (current image vs new image) and "Replace" / "Cancel" buttons — upload only proceeds on confirm
+  - "Remove" calls the delete endpoint and clears the preview
+  - Show upload progress indicator (spinner/progress bar)
+  - On mobile: file picker allows camera capture (`accept="image/*"` triggers camera option on phones)
+  - Provide a check box to set `imageApproximate`. When it is true then show the "Not an accurate image" on the item   the customer sees, else do not show it.
+#### Step 5: Add image thumbnail to admin menu grid
+- **File:** `src/next-client/src/components/admin/menu-item-list.tsx`
+- In each item row, show a small thumbnail (32x32) before the item name
+  - If `imageUrl` set show the image
+  - If `imageUrl` is not set show the image with a subtle "stock" indicator (e.g., small icon overlay)
+  - If no `imageUrl`: show the letter fallback (same pattern as customer `ItemCard`)
+- Clicking the thumbnail opens the form sheet in edit mode (quick access to image upload)
+
+#### Step 6: Add admin API methods
+- **File:** `src/next-client/src/lib/admin-api.ts`
+- `uploadMenuItemImage(token, menuItemId, file: File): Promise<MenuItemDto>` — sends `FormData` with the file
+- `deleteMenuItemImage(token, menuItemId): Promise<void>`
+
+### Storage Considerations
+- **Local disk** (`wwwroot/uploads/`) is simplest for a self-hosted Docker setup — mount as a Docker volume so uploads persist across container rebuilds
+- Add `uploads/` volume to `docker-compose.yml`: `./uploads:/app/wwwroot/uploads`
+- Future option: swap to S3-compatible storage if the shop outgrows local disk (unlikely for a menu with ~30 items)
+
+### Tests (Write Before Implementation)
+
+#### Unit Tests — `src/next-client/src/__tests__/components/menu-item-form-sheet.test.tsx`
+```
+1. renders image upload zone when no image exists
+2. renders image preview when imageUrl is set
+3. "Change" button opens file picker
+4. "Remove" button calls delete endpoint and clears preview
+5. selecting a file when no image exists triggers upload immediately
+6. selecting a file when image already exists shows replacement confirmation dialog
+7. confirmation dialog shows current and new image side by side
+8. confirming replacement triggers upload API call
+9. cancelling replacement discards the selected file and keeps current image
+10. shows loading spinner during upload
+11. updates preview after successful upload
+12. shows error toast on upload failure
+13. file picker accepts image/* (allows camera on mobile)
+```
+
+#### Unit Tests — `src/next-client/src/__tests__/components/menu-item-list.test.tsx`
+```
+1. renders image thumbnail for items with imageUrl
+2. renders letter fallback for items without imageUrl
+3. shows "stock" indicator for items where imageApproximate is true
+4. clicking thumbnail opens edit form sheet
+```
+
+#### Integration Tests (Backend) — `tests/MannaHp.Server.Tests/Endpoints/MenuItemImageTests.cs`
+```
+1. POST /api/menu-items/{id}/image uploads file and updates imageUrl
+2. upload rejects files over 5 MB (400)
+3. upload rejects non-image file types (400)
+4. upload deletes previous image file when replacing
+5. sets imageApproximate to false after upload
+6. DELETE /api/menu-items/{id}/image removes file and clears imageUrl
+7. both endpoints require Owner authorization
+8. upload returns 404 for non-existent menu item
+```
+
+### Implementation Notes
+
+**Backend changes:**
+- `src/Server/EndPoints/MenuItemEndpoints.cs`: Added `POST /{id}/image` (upload) and `DELETE /{id}/image` (delete) endpoints. Upload validates file size (max 5 MB), content type (JPEG/PNG/WebP), saves to `wwwroot/uploads/menu/{menuItemId}-{timestamp}.{ext}`, deletes previous file on replace. Both require Owner authorization.
+- `src/Server/Program.cs`: Added `app.UseStaticFiles()` to serve uploaded images from `wwwroot/uploads/`.
+- `docker-compose.yml`: Added `uploads` Docker volume mounted at `/app/wwwroot/uploads` for persistence across container rebuilds.
+
+**Frontend changes:**
+- `src/next-client/src/lib/api.ts`: Added `resolveImageUrl()` helper that prepends `NEXT_PUBLIC_API_URL` for relative image paths. Used by all components that display menu item images.
+- `src/next-client/src/lib/admin-api.ts`: Added `uploadMenuItemImage()` (multipart/form-data POST) and `deleteMenuItemImage()` methods.
+- `src/next-client/src/components/admin/menu-item-form-sheet.tsx`: Added image section at top of edit form — upload zone when no image, preview with Change/Remove buttons when image exists, "Not an accurate image" checkbox for `imageApproximate`.
+- `src/next-client/src/components/admin/menu-item-list.tsx`: Added 32x32 image thumbnails before item names in the grid, with letter fallback when no image.
+- `src/next-client/src/components/item-card.tsx` and `fixed-item-detail.tsx`: Updated to use `resolveImageUrl()` so uploaded images resolve correctly from the API server.
+- `src/next-client/next.config.ts`: Added `images.remotePatterns` for the API hostname so Next.js `Image` component can load remote images.
+
+**Test infrastructure:**
+- `src/next-client/src/__tests__/setup.ts`: Added `ResizeObserver` polyfill for Radix UI Sheet components in jsdom.
+- Installed `@testing-library/user-event` as dev dependency.
+
+---
+
+## F13: Inventory Check-In / Receiving
+
+**Priority:** P13
+**Mobile Impact:** High - restocking happens in the kitchen/storage, likely on a phone
+
+### Current State
+- Stock levels can only be changed by editing an ingredient via `PUT /api/ingredients/{id}`, which **overwrites** all fields including `StockQuantity`
+- No additive "received X units" operation — admin must mentally add the delivery amount to the current stock and type the new total
+- No audit trail — no record of when stock was added, by whom, or how much
+- No batch receiving — each ingredient must be edited one at a time
+- Stock **does** auto-decrement when orders are marked Completed (commit `1f67b72`)
+
+### Plan
+
+#### Step 1: Create inventory log table
+- **File:** `src/Shared/Entities/InventoryLog.cs` (new)
+  - `Id` (Guid), `IngredientId` (FK), `ChangeType` (enum: Received, OrderDecrement, Adjustment), `QuantityChange` (decimal, positive for additions, negative for decrements), `NewStockQuantity` (decimal, snapshot after change), `Notes` (string, optional — e.g., "Weekly delivery"), `CreatedBy` (string, user ID), `CreatedAt` (DateTime)
+- **Migration** to add `inventory_logs` table
+
+#### Step 2: Add restock endpoint
+- **File:** `src/Server/EndPoints/IngredientEndpoints.cs`
+- `POST /api/ingredients/{id}/restock`
+  - Accepts `{ quantity: decimal, notes?: string }`
+  - **Adds** `quantity` to the ingredient's current `StockQuantity` (not overwrite)
+  - Creates an `InventoryLog` entry with `ChangeType = Received`
+  - Returns updated ingredient DTO
+  - Owner authorization
+
+#### Step 3: Add bulk restock endpoint
+- **File:** `src/Server/EndPoints/IngredientEndpoints.cs`
+- `POST /api/ingredients/bulk-restock`
+  - Accepts array of `{ ingredientId, quantity, notes? }`
+  - Adds quantities in a single transaction, creates log entries for each
+  - Owner authorization
+
+#### Step 4: Log order decrements
+- **File:** `src/Server/EndPoints/OrderEndpoints.cs`
+- When an order is marked Completed and stock is decremented, also write `InventoryLog` entries with `ChangeType = OrderDecrement`
+
+#### Step 5: Add receiving UI
+- **File:** `src/next-client/src/app/admin/(dashboard)/ingredients/restock/page.tsx` (new)
+- Shows all ingredients in a list with current stock and an "Add" input field
+- Enter quantities received for each ingredient (leave blank to skip)
+- Optional notes field (e.g., "Sysco delivery 3/10")
+- "Submit Delivery" button sends bulk restock request
+- Success toast with summary: "Restocked 8 ingredients"
+- Link from ingredients page header: "Check In Delivery" button
+
+#### Step 6: Add inventory history view
+- **File:** `src/next-client/src/app/admin/(dashboard)/ingredients/[id]/history/page.tsx` (new)
+- Shows chronological log of all stock changes for a single ingredient
+- Each entry: date, change type, quantity change (+/-), resulting stock, notes, user
+- Accessible from ingredient detail/edit sheet via "View History" link
+
+### Tests (Write Before Implementation)
+
+#### Unit Tests — `src/next-client/src/__tests__/components/restock-page.test.tsx`
+```
+1. renders all ingredients with current stock levels
+2. "Add" input accepts numeric values
+3. ingredients with no input are excluded from submission
+4. "Submit Delivery" sends only modified ingredients to bulk-restock endpoint
+5. shows success toast with count of restocked ingredients
+6. optional notes field is included in the request
+7. form resets after successful submission
+```
+
+#### Unit Tests — `src/next-client/src/__tests__/components/ingredient-history.test.tsx`
+```
+1. renders chronological list of inventory changes
+2. shows change type badge (Received / Order / Adjustment)
+3. positive changes show green "+X", negative show red "-X"
+4. each entry shows resulting stock level
+5. shows "No history" when log is empty
+```
+
+#### Integration Tests (Backend) — `tests/MannaHp.Server.Tests/Endpoints/RestockEndpointTests.cs`
+```
+1. POST /api/ingredients/{id}/restock adds to current stock (not overwrites)
+2. restock creates an InventoryLog entry with ChangeType = Received
+3. bulk-restock updates multiple ingredients in a single transaction
+4. restock rejects negative quantities
+5. requires Owner authorization
+6. completing an order creates InventoryLog entries with ChangeType = OrderDecrement
+7. inventory log records the correct NewStockQuantity snapshot
+```
+
+### Relationship to F9 (Bulk Stock Update)
+F9 covers a "restock mode" with inline editing that **overwrites** stock values. F13 replaces that concept with **additive** receiving and an audit trail. If F13 is implemented, F9's inline overwrite mode becomes less necessary — consider merging F9's UI ideas (inline inputs on the ingredients table) into F13's receiving flow.
+
+---
+
 ## Implementation Notes
 
 ### Mobile-First Approach
@@ -649,3 +873,4 @@ All features should be designed mobile-first since customers primarily order on 
 - **F7** (Popular Items) backend can be built independently; pairs well with **F11** (Analytics)
 - **F1** (Real-time Tracking) and **F8** (Sound Notifications) both extend SignalR — can share implementation effort
 - **F4** (Mobile Ingredients) and **F9** (Bulk Restock) both modify the ingredients page — implement together
+- **F13** (Inventory Check-In) supersedes parts of **F9** (Bulk Stock Update) — F13 adds additive receiving + audit trail vs F9's overwrite approach. Consider merging F9's UI into F13

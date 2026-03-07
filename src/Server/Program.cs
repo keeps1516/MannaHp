@@ -97,6 +97,9 @@ var app = builder.Build();
 app.UseSentryTracing();
 app.UseCors("NextClient");
 
+// Serve uploaded images from wwwroot/uploads/
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Camera, X } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
+import { resolveImageUrl } from "@/lib/api";
 import { useAuth } from "@/store/auth-context";
 import type { MenuItemDto, CategoryDto } from "@/types/api";
 
@@ -49,6 +50,10 @@ export function MenuItemFormSheet({
   const [isCustomizable, setIsCustomizable] = useState(false);
   const [sortOrder, setSortOrder] = useState("");
   const [active, setActive] = useState(true);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageApproximate, setImageApproximate] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEdit = menuItem !== null;
 
@@ -60,6 +65,8 @@ export function MenuItemFormSheet({
       setIsCustomizable(menuItem.isCustomizable);
       setSortOrder(String(menuItem.sortOrder));
       setActive(menuItem.active);
+      setImageUrl(menuItem.imageUrl);
+      setImageApproximate(menuItem.imageApproximate);
     } else {
       setName("");
       setDescription("");
@@ -67,8 +74,49 @@ export function MenuItemFormSheet({
       setIsCustomizable(false);
       setSortOrder("0");
       setActive(true);
+      setImageUrl(null);
+      setImageApproximate(false);
     }
   }, [menuItem, open, categories]);
+
+  async function handleImageUpload(file: File) {
+    if (!token || !menuItem) return;
+    setUploading(true);
+    try {
+      const updated = await adminApi.uploadMenuItemImage(token, menuItem.id, file);
+      setImageUrl(updated.imageUrl);
+      toast.success("Image uploaded");
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleImageDelete() {
+    if (!token || !menuItem) return;
+    setUploading(true);
+    try {
+      await adminApi.deleteMenuItemImage(token, menuItem.id);
+      setImageUrl(null);
+      setImageApproximate(false);
+      toast.success("Image removed");
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to remove image");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleImageUpload(file);
+    // Reset input so re-selecting same file triggers onChange
+    e.target.value = "";
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,8 +128,8 @@ export function MenuItemFormSheet({
         await adminApi.updateMenuItem(token, menuItem.id, {
           name,
           description: description || null,
-          imageUrl: menuItem.imageUrl,
-          imageApproximate: menuItem.imageApproximate,
+          imageUrl,
+          imageApproximate,
           isCustomizable,
           categoryId,
           sortOrder: Number(sortOrder),
@@ -122,6 +170,88 @@ export function MenuItemFormSheet({
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-6 px-1">
+          {/* Image upload section */}
+          {isEdit && (
+            <div className="space-y-2">
+              <Label className="text-[#7a9bb5]">Image</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              {imageUrl ? (
+                <div data-testid="image-preview" className="space-y-2">
+                  <div className="relative w-[120px] h-[120px] rounded-lg overflow-hidden bg-[#0a1628]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolveImageUrl(imageUrl)}
+                      alt="Menu item"
+                      className="w-full h-full object-cover"
+                    />
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-[#00e5ff]" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-[#1e3a5f] text-[#7a9bb5] hover:text-white hover:bg-white/5"
+                    >
+                      Change
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={handleImageDelete}
+                      className="border-[#ff4757]/30 text-[#ff4757] hover:bg-[#ff4757]/10"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="image-upload-zone"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-24 rounded-lg border-2 border-dashed border-[#1e3a5f] bg-[#0a1628] flex flex-col items-center justify-center gap-1 text-[#7a9bb5] hover:border-[#00e5ff]/50 hover:text-[#00e5ff] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="h-6 w-6" />
+                      <span className="text-xs">Upload image</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {imageUrl && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="image-approximate"
+                    checked={imageApproximate}
+                    onCheckedChange={(checked) => setImageApproximate(checked === true)}
+                  />
+                  <Label htmlFor="image-approximate" className="text-[#7a9bb5] text-sm">
+                    Not an accurate image
+                  </Label>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label className="text-[#7a9bb5]">Name</Label>
             <Input

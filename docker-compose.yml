@@ -35,6 +35,8 @@ services:
       Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY}"
       Stripe__WebhookSecret: "${STRIPE_WEBHOOK_SECRET}"
       Sentry__Dsn: "${SENTRY_DSN_API}"
+    volumes:
+      - uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,3 +74,4 @@ services:
 volumes:
   pgdata:
   bugsink_data:
+  uploads:

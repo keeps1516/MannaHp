@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { resolveImageUrl } from "@/lib/api";
 import type { MenuItemDto } from "@/types/api";
 
 interface ItemCardProps {
@@ -38,7 +39,7 @@ export function ItemCard({ item }: ItemCardProps) {
           {item.imageUrl ? (
             <div className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-[#0f1f35]">
               <Image
-                src={item.imageUrl}
+                src={resolveImageUrl(item.imageUrl)}
                 alt={item.name}
                 fill
                 className="object-cover"
