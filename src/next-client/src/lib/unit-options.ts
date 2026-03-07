@@ -15,3 +15,19 @@ export const unitOptions = [
 export function unitLabel(unit: UnitOfMeasure): string {
   return unitOptions.find((o) => o.value === unit)?.label ?? "Unknown";
 }
+
+const shortLabels: Record<UnitOfMeasure, string> = {
+  [UnitOfMeasure.Oz]: "oz",
+  [UnitOfMeasure.Lb]: "lb",
+  [UnitOfMeasure.Cups]: "cups",
+  [UnitOfMeasure.FlOz]: "fl oz",
+  [UnitOfMeasure.Tsp]: "tsp",
+  [UnitOfMeasure.Tbsp]: "tbsp",
+  [UnitOfMeasure.Each]: "ea",
+  [UnitOfMeasure.Shot]: "shots",
+};
+
+/** Get a short abbreviation for a UnitOfMeasure (e.g., "oz", "lb") */
+export function unitShortLabel(unit: UnitOfMeasure): string {
+  return shortLabels[unit] ?? "?";
+}

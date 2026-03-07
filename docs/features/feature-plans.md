@@ -126,49 +126,26 @@
 
 ---
 
-## F4: Mobile-Friendly Ingredients Grid
+## F4: Mobile-Friendly Ingredients Grid ✅
 
+**Status:** Complete
 **UX Evaluation Ref:** [Enhancement #21 (first)](../ux-evaluation.md) - "Make Ingredients grid more mobile friendly"
 **Priority:** P4
 **Mobile Impact:** Critical - ingredients table is unusable on small screens
 
-### Current State
-- Ingredients page shows a full table with 7 columns: name, unit, cost/unit, stock qty, threshold, status, actions
-- No responsive behavior — all columns shown regardless of screen size
-- Edit is inline via a sheet component
-- Delete triggers an AlertDialog
+### Implementation Notes
+- Mobile (< md): compact card layout showing name + "300 oz" stock summary, LOW badge, inactive opacity
+- Desktop (>= md): existing 7-column table preserved unchanged
+- Uses Tailwind `md:hidden` / `hidden md:block` for responsive switching
+- Tapping a mobile card opens a detail Sheet showing all fields (unit, cost, stock, threshold, status)
+- Detail sheet has Edit + Deactivate buttons; Edit opens the existing `IngredientFormSheet`
+- Added `unitShortLabel()` helper in `unit-options.ts` for compact unit abbreviations (oz, lb, cups, etc.)
+- Search filters both mobile cards and desktop table rows
 
-### Plan
-
-#### Step 1: Create compact mobile list view
-- **File:** `src/next-client/src/app/admin/(dashboard)/ingredients/page.tsx`
-- On mobile (< 768px), replace the table with a card/list layout:
-  - Each row shows: **Name** and **"300 oz"** (combined stock + abbreviated unit)
-  - Low stock items get a red dot or "LOW" badge
-  - Inactive items get a muted style
-- On desktop (>= 768px), keep the existing table
-
-#### Step 2: Tap-to-edit detail screen
-- **File:** `src/next-client/src/components/admin/ingredient-detail-sheet.tsx` (new)
-- Tapping a row on mobile opens a full detail sheet/page showing:
-  - All fields: name, unit, cost per unit, stock quantity, low stock threshold, active status
-  - Edit button to modify all fields
-  - Delete (deactivate) button at the bottom in red
-- Reuse existing `IngredientFormSheet` for the edit form
-
-### Tests (Write Before Implementation)
-
-#### Unit Tests — `src/next-client/src/__tests__/components/ingredients-page.test.tsx`
-```
-1. renders card layout on mobile viewport (< 768px)
-2. each card shows ingredient name and combined stock+unit (e.g., "300 oz")
-3. renders table layout on desktop viewport (>= 768px)
-4. tapping a card on mobile opens the detail sheet
-5. detail sheet shows all ingredient fields
-6. detail sheet has a delete button
-7. low stock ingredients show "LOW" badge in mobile card view
-8. search filters cards on mobile the same as table rows on desktop
-```
+### Files Modified
+- `src/next-client/src/app/admin/(dashboard)/ingredients/page.tsx` — mobile card layout, detail sheet, responsive views
+- `src/next-client/src/lib/unit-options.ts` — added `unitShortLabel()` helper
+- `src/next-client/src/__tests__/components/ingredients-page.test.tsx` — 9 new tests (new file)
 
 ---
 

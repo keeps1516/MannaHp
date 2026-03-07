@@ -22,11 +22,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Plus, Pencil, Trash2, Search } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Loader2, Plus, Pencil, Trash2, Search, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { useAuth } from "@/store/auth-context";
-import { unitLabel } from "@/lib/unit-options";
+import { unitLabel, unitShortLabel } from "@/lib/unit-options";
 import { IngredientFormSheet } from "@/components/admin/ingredient-form-sheet";
 import type { IngredientDto } from "@/types/api";
 
@@ -39,6 +45,10 @@ export default function IngredientsPage() {
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingIngredient, setEditingIngredient] =
+    useState<IngredientDto | null>(null);
+
+  // Detail sheet state (mobile)
+  const [detailIngredient, setDetailIngredient] =
     useState<IngredientDto | null>(null);
 
   // Delete dialog state
@@ -70,6 +80,7 @@ export default function IngredientsPage() {
   }
 
   function handleEdit(ingredient: IngredientDto) {
+    setDetailIngredient(null);
     setEditingIngredient(ingredient);
     setSheetOpen(true);
   }
@@ -80,6 +91,7 @@ export default function IngredientsPage() {
       await adminApi.deleteIngredient(token, deleteTarget.id);
       toast.success("Ingredient deactivated");
       setDeleteTarget(null);
+      setDetailIngredient(null);
       fetchIngredients();
     } catch (err) {
       toast.error(
@@ -126,8 +138,52 @@ export default function IngredientsPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-white/10 overflow-hidden">
+      {/* Mobile card layout */}
+      <div data-testid="ingredients-mobile" className="md:hidden space-y-2">
+        {filtered.map((ing) => {
+          const isLowStock = ing.active && ing.stockQuantity < ing.lowStockThreshold;
+          return (
+            <div
+              key={ing.id}
+              data-testid={`mobile-card-${ing.id}`}
+              onClick={() => setDetailIngredient(ing)}
+              className={`rounded-lg border border-white/10 bg-[#0d1f3c] p-4 flex items-center justify-between cursor-pointer hover:border-white/20 transition-colors ${
+                !ing.active ? "opacity-50" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="min-w-0">
+                  <p className="font-medium text-white truncate">{ing.name}</p>
+                  <p className={`text-sm ${isLowStock ? "text-[#ff4757]" : "text-[#7a9bb5]"}`}>
+                    {ing.stockQuantity} {unitShortLabel(ing.unit)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {isLowStock && (
+                  <Badge className="bg-[#ff4757]/10 text-[#ff4757] border-[#ff4757]/20 hover:bg-[#ff4757]/10 text-xs">
+                    LOW
+                  </Badge>
+                )}
+                {!ing.active && (
+                  <Badge className="bg-gray-500/10 text-gray-400 border-gray-500/20 hover:bg-gray-500/10 text-xs">
+                    Inactive
+                  </Badge>
+                )}
+                <ChevronRight className="h-4 w-4 text-[#4a6a85]" />
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <p className="text-center text-[#7a9bb5] py-8">
+            {search ? "No ingredients match your search." : "No ingredients yet."}
+          </p>
+        )}
+      </div>
+
+      {/* Desktop table layout */}
+      <div data-testid="ingredients-desktop" className="hidden md:block rounded-lg border border-white/10 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-white/10 hover:bg-transparent">
@@ -228,6 +284,65 @@ export default function IngredientsPage() {
         </Table>
       </div>
 
+      {/* Mobile Detail Sheet */}
+      <Sheet
+        open={!!detailIngredient}
+        onOpenChange={(open) => !open && setDetailIngredient(null)}
+      >
+        <SheetContent className="bg-[#0d1f3c] border-white/10 overflow-y-auto">
+          {detailIngredient && (
+            <div data-testid="ingredient-detail">
+              <SheetHeader>
+                <SheetTitle className="text-white">
+                  {detailIngredient.name}
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-4">
+                <DetailRow label="Unit" value={unitLabel(detailIngredient.unit)} />
+                <DetailRow
+                  label="Cost per Unit"
+                  value={`$${detailIngredient.costPerUnit.toFixed(4)}`}
+                />
+                <DetailRow
+                  label="Stock Quantity"
+                  value={`${detailIngredient.stockQuantity} ${unitShortLabel(detailIngredient.unit)}`}
+                  alert={detailIngredient.active && detailIngredient.stockQuantity < detailIngredient.lowStockThreshold}
+                />
+                <DetailRow
+                  label="Low Stock Threshold"
+                  value={String(detailIngredient.lowStockThreshold)}
+                />
+                <DetailRow
+                  label="Status"
+                  value={detailIngredient.active ? "Active" : "Inactive"}
+                />
+              </div>
+
+              <div className="mt-8 space-y-3">
+                <Button
+                  onClick={() => handleEdit(detailIngredient)}
+                  className="w-full bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Ingredient
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteTarget(detailIngredient);
+                  }}
+                  className="w-full border-[#ff4757]/30 text-[#ff4757] hover:bg-[#ff4757]/10 hover:text-[#ff4757]"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Deactivate Ingredient
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
       {/* Form Sheet */}
       <IngredientFormSheet
         open={sheetOpen}
@@ -264,6 +379,25 @@ export default function IngredientsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  alert,
+}: {
+  label: string;
+  value: string;
+  alert?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-white/5">
+      <span className="text-sm text-[#7a9bb5]">{label}</span>
+      <span className={`font-medium ${alert ? "text-[#ff4757]" : "text-white"}`}>
+        {value}
+      </span>
     </div>
   );
 }
