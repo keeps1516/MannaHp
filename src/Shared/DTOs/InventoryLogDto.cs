@@ -15,6 +15,6 @@ public record InventoryLogDto(
 
 public record RestockRequest(decimal Quantity, string? Notes);
 
-public record BulkRestockItem(Guid IngredientId, decimal Quantity, string? Notes);
+public record BulkRestockItem(Guid IngredientId, decimal Quantity, decimal CostPaid);
 
 public record BulkRestockRequest(List<BulkRestockItem> Items);

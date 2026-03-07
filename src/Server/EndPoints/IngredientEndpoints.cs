@@ -122,6 +122,22 @@ public static class IngredientEndpoints
                 if (item.Quantity <= 0) continue;
                 if (!ingredients.TryGetValue(item.IngredientId, out var ingredient)) continue;
 
+                // Update cost per unit via weighted average
+                if (item.CostPaid > 0)
+                {
+                    var newCostPerUnit = item.CostPaid / item.Quantity;
+                    if (ingredient.StockQuantity > 0)
+                    {
+                        ingredient.CostPerUnit =
+                            ((ingredient.StockQuantity * ingredient.CostPerUnit) + (item.Quantity * newCostPerUnit))
+                            / (ingredient.StockQuantity + item.Quantity);
+                    }
+                    else
+                    {
+                        ingredient.CostPerUnit = newCostPerUnit;
+                    }
+                }
+
                 ingredient.StockQuantity += item.Quantity;
 
                 db.InventoryLogs.Add(new InventoryLog
@@ -130,7 +146,7 @@ public static class IngredientEndpoints
                     ChangeType = InventoryChangeType.Received,
                     QuantityChange = item.Quantity,
                     NewStockQuantity = ingredient.StockQuantity,
-                    Notes = item.Notes,
+                    Notes = $"Delivery: {item.Quantity} received" + (item.CostPaid > 0 ? $" (${item.CostPaid:F2})" : ""),
                     CreatedBy = userId,
                 });
 

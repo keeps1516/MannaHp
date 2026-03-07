@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import RestockPage from "@/app/admin/(dashboard)/ingredients/restock/page";
 import { UnitOfMeasure } from "@/types/api";
 import type { IngredientDto } from "@/types/api";
@@ -13,9 +14,13 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -24,11 +29,13 @@ vi.mock("next/navigation", () => ({
 
 const getIngredientsMock = vi.fn();
 const bulkRestockMock = vi.fn();
+const createIngredientMock = vi.fn();
 
 vi.mock("@/lib/admin-api", () => ({
   adminApi: {
     getIngredients: (...args: unknown[]) => getIngredientsMock(...args),
     bulkRestock: (...args: unknown[]) => bulkRestockMock(...args),
+    createIngredient: (...args: unknown[]) => createIngredientMock(...args),
   },
 }));
 
@@ -47,133 +54,326 @@ function makeIngredient(overrides: Partial<IngredientDto> = {}): IngredientDto {
 
 const sampleIngredients: IngredientDto[] = [
   makeIngredient({ id: "ing-1", name: "Jasmine Rice", stockQuantity: 300 }),
-  makeIngredient({ id: "ing-2", name: "Ground Beef", unit: UnitOfMeasure.Lb, stockQuantity: 50 }),
-  makeIngredient({ id: "ing-3", name: "Espresso Beans", stockQuantity: 200, active: false }),
+  makeIngredient({
+    id: "ing-2",
+    name: "Ground Beef",
+    unit: UnitOfMeasure.Lb,
+    stockQuantity: 50,
+  }),
+  makeIngredient({
+    id: "ing-3",
+    name: "Espresso Beans",
+    stockQuantity: 200,
+    active: false,
+  }),
 ];
 
-describe("RestockPage", () => {
+describe("RestockPage — Search & Autocomplete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getIngredientsMock.mockResolvedValue(sampleIngredients);
+    bulkRestockMock.mockResolvedValue([]);
+    createIngredientMock.mockResolvedValue(
+      makeIngredient({ id: "new-created", name: "New Item" })
+    );
+  });
+
+  it("renders search input on page load", async () => {
+    render(<RestockPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("ingredient-search")).toBeInTheDocument();
+    });
+  });
+
+  it("shows matching ingredients in dropdown as user types", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+
+    await waitFor(() => {
+      expect(screen.getByText("Jasmine Rice")).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Add new ingredient" when no exact match found', async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Avocado");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("add-new-ingredient")).toBeInTheDocument();
+    });
+  });
+
+  it("opens add-to-delivery card when ingredient selected", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+
+    expect(screen.getByTestId("add-to-delivery-card")).toBeInTheDocument();
+  });
+});
+
+describe("RestockPage — Add to Delivery Card", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getIngredientsMock.mockResolvedValue(sampleIngredients);
     bulkRestockMock.mockResolvedValue([]);
   });
 
-  it("renders all active ingredients with current stock levels", async () => {
+  it("shows ingredient name, current stock, and unit", async () => {
+    const user = userEvent.setup();
     render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Jasmine Rice")).toBeInTheDocument();
-      expect(screen.getByText("Ground Beef")).toBeInTheDocument();
-      // shows current stock
-      expect(screen.getByText(/300/)).toBeInTheDocument();
-      expect(screen.getByText(/50/)).toBeInTheDocument();
-    });
-  });
-
-  it("has quantity input fields that accept numeric values", async () => {
-    render(<RestockPage />);
-
-    await waitFor(() => {
-      screen.getByText("Jasmine Rice");
-    });
-
-    const inputs = screen.getAllByPlaceholderText("0");
-    expect(inputs.length).toBeGreaterThanOrEqual(2);
-    fireEvent.change(inputs[0], { target: { value: "100" } });
-    expect(inputs[0]).toHaveValue(100);
-  });
-
-  it("Submit Delivery sends only modified ingredients", async () => {
-    render(<RestockPage />);
-
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
     await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
 
-    // Only fill in the first ingredient
-    const inputs = screen.getAllByPlaceholderText("0");
-    fireEvent.change(inputs[0], { target: { value: "50" } });
-
-    const submitBtn = screen.getByRole("button", { name: /submit delivery/i });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(bulkRestockMock).toHaveBeenCalledWith(
-        "fake-token",
-        expect.objectContaining({
-          items: expect.arrayContaining([
-            expect.objectContaining({ ingredientId: "ing-1", quantity: 50 }),
-          ]),
-        })
-      );
-    });
-
-    // Should NOT include the second ingredient (no value entered)
-    const callArgs = bulkRestockMock.mock.calls[0][1];
-    expect(callArgs.items.length).toBe(1);
+    expect(screen.getByText(/Current stock: 300/)).toBeInTheDocument();
   });
 
-  it("shows success toast with count of restocked ingredients", async () => {
+  it("shows auto-calculated cost per unit", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+
+    await user.type(screen.getByTestId("delivery-quantity"), "100");
+    await user.type(screen.getByTestId("delivery-cost"), "20");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cost-per-unit")).toHaveTextContent("$0.2000");
+    });
+  });
+
+  it('"Add to Delivery" button disabled when quantity is 0', async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+
+    expect(screen.getByTestId("add-to-delivery-btn")).toBeDisabled();
+  });
+
+  it("adds item to delivery list on confirm", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+
+    await user.type(screen.getByTestId("delivery-quantity"), "50");
+    await user.type(screen.getByTestId("delivery-cost"), "10");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
+
+    expect(screen.getByTestId("delivery-list")).toBeInTheDocument();
+    expect(screen.getByTestId("delivery-item-0")).toBeInTheDocument();
+  });
+});
+
+describe("RestockPage — New Ingredient Inline Form", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getIngredientsMock.mockResolvedValue(sampleIngredients);
+    bulkRestockMock.mockResolvedValue([]);
+    createIngredientMock.mockResolvedValue(
+      makeIngredient({ id: "new-created", name: "Avocado" })
+    );
+  });
+
+  it("shows name pre-filled from search text", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Avocado");
+    await waitFor(() => screen.getByTestId("add-new-ingredient"));
+    await user.click(screen.getByTestId("add-new-ingredient"));
+
+    expect(screen.getByTestId("new-ingredient-name")).toHaveValue("Avocado");
+  });
+
+  it("shows unit dropdown and threshold input", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Avocado");
+    await waitFor(() => screen.getByTestId("add-new-ingredient"));
+    await user.click(screen.getByTestId("add-new-ingredient"));
+
+    expect(screen.getByTestId("new-ingredient-unit")).toBeInTheDocument();
+    expect(screen.getByTestId("new-ingredient-threshold")).toBeInTheDocument();
+  });
+});
+
+describe("RestockPage — Delivery List", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getIngredientsMock.mockResolvedValue(sampleIngredients);
+    bulkRestockMock.mockResolvedValue([]);
+  });
+
+  it("displays added items with name, quantity, unit, cost", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    // Add Jasmine Rice
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+    await user.type(screen.getByTestId("delivery-quantity"), "50");
+    await user.type(screen.getByTestId("delivery-cost"), "10");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
+
+    const item = screen.getByTestId("delivery-item-0");
+    expect(item).toHaveTextContent("Jasmine Rice");
+    expect(item).toHaveTextContent("50");
+    expect(item).toHaveTextContent("$10.00");
+  });
+
+  it("remove button removes item from list", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+    await user.type(screen.getByTestId("delivery-quantity"), "50");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
+
+    expect(screen.getByTestId("delivery-item-0")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Remove Jasmine Rice"));
+
+    expect(screen.queryByTestId("delivery-item-0")).not.toBeInTheDocument();
+  });
+
+  it('"Submit Delivery" button disabled when list is empty', async () => {
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    expect(screen.getByTestId("submit-delivery-btn")).toBeDisabled();
+  });
+});
+
+describe("RestockPage — Submission", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getIngredientsMock.mockResolvedValue(sampleIngredients);
+    bulkRestockMock.mockResolvedValue([]);
+    createIngredientMock.mockResolvedValue(
+      makeIngredient({ id: "new-created", name: "Avocado" })
+    );
+  });
+
+  it("calls bulk restock API on submit", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
+    await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+    await user.type(screen.getByTestId("delivery-quantity"), "50");
+    await user.type(screen.getByTestId("delivery-cost"), "10");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
+
+    await user.click(screen.getByTestId("submit-delivery-btn"));
+
+    await waitFor(() => {
+      expect(bulkRestockMock).toHaveBeenCalledWith("fake-token", {
+        items: [
+          { ingredientId: "ing-1", quantity: 50, costPaid: 10 },
+        ],
+      });
+    });
+  });
+
+  it("creates new ingredients before restocking", async () => {
+    const user = userEvent.setup();
+    render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
+
+    await user.type(screen.getByTestId("ingredient-search"), "Avocado");
+    await waitFor(() => screen.getByTestId("add-new-ingredient"));
+    await user.click(screen.getByTestId("add-new-ingredient"));
+    await user.type(screen.getByTestId("delivery-quantity"), "20");
+    await user.type(screen.getByTestId("delivery-cost"), "30");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
+
+    await user.click(screen.getByTestId("submit-delivery-btn"));
+
+    await waitFor(() => {
+      expect(createIngredientMock).toHaveBeenCalled();
+      expect(bulkRestockMock).toHaveBeenCalledWith("fake-token", {
+        items: [
+          { ingredientId: "new-created", quantity: 20, costPaid: 30 },
+        ],
+      });
+    });
+  });
+
+  it("shows success toast and resets page on success", async () => {
     const { toast } = await import("sonner");
-    bulkRestockMock.mockResolvedValue([sampleIngredients[0]]);
-
+    const user = userEvent.setup();
     render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
 
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
     await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+    await user.type(screen.getByTestId("delivery-quantity"), "50");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
 
-    const inputs = screen.getAllByPlaceholderText("0");
-    fireEvent.change(inputs[0], { target: { value: "50" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /submit delivery/i }));
+    await user.click(screen.getByTestId("submit-delivery-btn"));
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith(
         expect.stringContaining("1")
       );
     });
+
+    // Delivery list should be cleared
+    expect(screen.queryByTestId("delivery-list")).not.toBeInTheDocument();
   });
 
-  it("has a notes field for delivery notes", async () => {
+  it("shows error toast on failure", async () => {
+    const { toast } = await import("sonner");
+    bulkRestockMock.mockRejectedValue(new Error("Network error"));
+    const user = userEvent.setup();
     render(<RestockPage />);
+    await waitFor(() => screen.getByTestId("ingredient-search"));
 
+    await user.type(screen.getByTestId("ingredient-search"), "Rice");
     await waitFor(() => screen.getByText("Jasmine Rice"));
+    await user.click(screen.getByText("Jasmine Rice"));
+    await user.type(screen.getByTestId("delivery-quantity"), "50");
+    await user.click(screen.getByTestId("add-to-delivery-btn"));
 
-    const notesInput = screen.getByPlaceholderText(/delivery|notes/i);
-    expect(notesInput).toBeInTheDocument();
-  });
-
-  it("includes notes in the request when provided", async () => {
-    render(<RestockPage />);
-
-    await waitFor(() => screen.getByText("Jasmine Rice"));
-
-    const inputs = screen.getAllByPlaceholderText("0");
-    fireEvent.change(inputs[0], { target: { value: "50" } });
-
-    const notesInput = screen.getByPlaceholderText(/delivery|notes/i);
-    fireEvent.change(notesInput, { target: { value: "Sysco delivery" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /submit delivery/i }));
+    await user.click(screen.getByTestId("submit-delivery-btn"));
 
     await waitFor(() => {
-      const callArgs = bulkRestockMock.mock.calls[0][1];
-      expect(callArgs.items[0].notes).toBe("Sysco delivery");
-    });
-  });
-
-  it("resets form after successful submission", async () => {
-    bulkRestockMock.mockResolvedValue([sampleIngredients[0]]);
-
-    render(<RestockPage />);
-
-    await waitFor(() => screen.getByText("Jasmine Rice"));
-
-    const inputs = screen.getAllByPlaceholderText("0");
-    fireEvent.change(inputs[0], { target: { value: "50" } });
-
-    fireEvent.click(screen.getByRole("button", { name: /submit delivery/i }));
-
-    await waitFor(() => {
-      // Input should be reset to empty
-      expect(inputs[0]).toHaveValue(null);
+      expect(toast.error).toHaveBeenCalledWith("Failed to submit delivery");
     });
   });
 });

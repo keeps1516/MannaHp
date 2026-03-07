@@ -306,7 +306,7 @@ export interface RestockRequest {
 export interface BulkRestockItem {
   ingredientId: string;
   quantity: number;
-  notes?: string;
+  costPaid: number;
 }
 
 export interface BulkRestockRequest {
