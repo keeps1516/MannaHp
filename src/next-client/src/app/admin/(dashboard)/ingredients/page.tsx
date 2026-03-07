@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Loader2, Plus, Pencil, Trash2, Search, ChevronRight } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Search, ChevronRight, PackagePlus, History } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { useAuth } from "@/store/auth-context";
@@ -118,13 +119,26 @@ export default function IngredientsPage() {
             {ingredients.length} ingredient{ingredients.length !== 1 && "s"}
           </p>
         </div>
-        <Button
-          onClick={handleAdd}
-          className="bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Ingredient
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/ingredients/restock">
+            <Button
+              variant="outline"
+              className="border-[#1e3a5f] text-[#7a9bb5] hover:text-white hover:bg-white/5"
+            >
+              <PackagePlus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Check In Delivery</span>
+              <span className="sm:hidden">Restock</span>
+            </Button>
+          </Link>
+          <Button
+            onClick={handleAdd}
+            className="bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Add Ingredient</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -327,6 +341,15 @@ export default function IngredientsPage() {
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit Ingredient
                 </Button>
+                <Link href={`/admin/ingredients/${detailIngredient.id}/history`}>
+                  <Button
+                    variant="outline"
+                    className="w-full border-[#1e3a5f] text-[#7a9bb5] hover:text-white hover:bg-white/5 mt-3"
+                  >
+                    <History className="h-4 w-4 mr-2" />
+                    View History
+                  </Button>
+                </Link>
                 <Button
                   variant="outline"
                   onClick={() => {

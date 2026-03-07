@@ -279,3 +279,36 @@ export interface UserDto {
   displayName: string | null;
   role: string;
 }
+
+export enum InventoryChangeType {
+  Received = 0,
+  OrderDecrement = 1,
+  Adjustment = 2,
+}
+
+export interface InventoryLogDto {
+  id: string;
+  ingredientId: string;
+  ingredientName: string;
+  changeType: InventoryChangeType;
+  quantityChange: number;
+  newStockQuantity: number;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface RestockRequest {
+  quantity: number;
+  notes?: string;
+}
+
+export interface BulkRestockItem {
+  ingredientId: string;
+  quantity: number;
+  notes?: string;
+}
+
+export interface BulkRestockRequest {
+  items: BulkRestockItem[];
+}

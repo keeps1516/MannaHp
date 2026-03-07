@@ -1,5 +1,6 @@
 import type {
   AuthResponse,
+  BulkRestockRequest,
   CategoryDto,
   CreateAvailableIngredientRequest,
   CreateCategoryRequest,
@@ -7,6 +8,7 @@ import type {
   CreateMenuItemRequest,
   CreateVariantRequest,
   IngredientDto,
+  InventoryLogDto,
   LoginRequest,
   MenuItemDto,
   MenuItemVariantDto,
@@ -14,6 +16,7 @@ import type {
   OrderDto,
   OrderStatus,
   RegisterRequest,
+  RestockRequest,
   UpdateAvailableIngredientRequest,
   UpdateCategoryRequest,
   UpdateIngredientRequest,
@@ -169,6 +172,9 @@ export const adminApi = {
   getIngredients: (token: string) =>
     adminFetch<IngredientDto[]>("/api/ingredients", token),
 
+  getIngredient: (token: string, id: string) =>
+    adminFetch<IngredientDto>(`/api/ingredients/${id}`, token),
+
   createIngredient: (token: string, req: CreateIngredientRequest) =>
     adminFetch<IngredientDto>("/api/ingredients", token, {
       method: "POST",
@@ -183,6 +189,21 @@ export const adminApi = {
 
   deleteIngredient: (token: string, id: string) =>
     adminFetchNoBody(`/api/ingredients/${id}`, token, { method: "DELETE" }),
+
+  restockIngredient: (token: string, id: string, req: RestockRequest) =>
+    adminFetch<IngredientDto>(`/api/ingredients/${id}/restock`, token, {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+
+  bulkRestock: (token: string, req: BulkRestockRequest) =>
+    adminFetch<IngredientDto[]>("/api/ingredients/bulk-restock", token, {
+      method: "POST",
+      body: JSON.stringify(req),
+    }),
+
+  getInventoryHistory: (token: string, ingredientId: string) =>
+    adminFetch<InventoryLogDto[]>(`/api/ingredients/${ingredientId}/history`, token),
 
   // ── Menu Items ──
   getMenuItems: (token: string) =>

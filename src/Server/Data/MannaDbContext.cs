@@ -28,6 +28,7 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 	public DbSet<OrderItem> OrderItems => Set<OrderItem>();
 	public DbSet<OrderItemIngredient> OrderItemIngredients => Set<OrderItemIngredient>();
 	public DbSet<AppSettings> AppSettings => Set<AppSettings>();
+	public DbSet<InventoryLog> InventoryLogs => Set<InventoryLog>();
 
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -244,6 +245,24 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 				new AppSettings { Id = Guid.Parse("e0000000-0005-0000-0000-000000000005"), Key = "DefaultTaxRate", Value = "0.0825" },
 				new AppSettings { Id = Guid.Parse("e0000000-0006-0000-0000-000000000006"), Key = "ReceiptFooter", Value = "Our pleasure to serve you!" }
 			);
+		});
+
+		// ── InventoryLog ──
+		modelBuilder.Entity<InventoryLog>(e =>
+		{
+			e.ToTable("inventory_logs");
+			e.HasKey(l => l.Id);
+			e.Property(l => l.QuantityChange).HasPrecision(10, 4);
+			e.Property(l => l.NewStockQuantity).HasPrecision(10, 2);
+			e.Property(l => l.Notes).HasMaxLength(500);
+			e.Property(l => l.CreatedBy).HasMaxLength(450);
+			e.Property(l => l.CreatedAt).HasDefaultValueSql("now()");
+			e.HasIndex(l => l.IngredientId);
+			e.HasIndex(l => l.CreatedAt);
+
+			e.HasOne(l => l.Ingredient)
+				.WithMany()
+				.HasForeignKey(l => l.IngredientId);
 		});
 
 		// ── Seed Data ──

@@ -687,95 +687,50 @@
 
 ---
 
-## F13: Inventory Check-In / Receiving
+## F13: Inventory Check-In / Receiving ✅
 
+**Status:** Complete
 **Priority:** P13
 **Mobile Impact:** High - restocking happens in the kitchen/storage, likely on a phone
 
-### Current State
-- Stock levels can only be changed by editing an ingredient via `PUT /api/ingredients/{id}`, which **overwrites** all fields including `StockQuantity`
-- No additive "received X units" operation — admin must mentally add the delivery amount to the current stock and type the new total
-- No audit trail — no record of when stock was added, by whom, or how much
-- No batch receiving — each ingredient must be edited one at a time
-- Stock **does** auto-decrement when orders are marked Completed (commit `1f67b72`)
+### Implementation Notes
 
-### Plan
+**Backend:**
+- `InventoryLog` entity with fields: Id, IngredientId (FK), ChangeType (Received/OrderDecrement/Adjustment), QuantityChange, NewStockQuantity (snapshot), Notes, CreatedBy, CreatedAt
+- `InventoryChangeType` enum in `Shared/Enums`
+- `POST /api/ingredients/{id}/restock` — additive restock (not overwrite), creates log entry, Owner auth
+- `POST /api/ingredients/bulk-restock` — batch restock with per-item notes, Owner auth
+- `GET /api/ingredients/{id}/history` — returns last 100 log entries, newest first, Owner auth
+- Order decrements now create `InventoryLog` entries with `ChangeType = OrderDecrement` and note `"Order #{number}"`
+- DTOs: `RestockRequest`, `BulkRestockRequest`, `BulkRestockItem`, `InventoryLogDto`
 
-#### Step 1: Create inventory log table
-- **File:** `src/Shared/Entities/InventoryLog.cs` (new)
-  - `Id` (Guid), `IngredientId` (FK), `ChangeType` (enum: Received, OrderDecrement, Adjustment), `QuantityChange` (decimal, positive for additions, negative for decrements), `NewStockQuantity` (decimal, snapshot after change), `Notes` (string, optional — e.g., "Weekly delivery"), `CreatedBy` (string, user ID), `CreatedAt` (DateTime)
-- **Migration** to add `inventory_logs` table
+**Frontend:**
+- Restock page (`/admin/ingredients/restock`) — lists all active ingredients with current stock, quantity input per item, delivery notes, "Submit Delivery" button
+- Ingredient history page (`/admin/ingredients/[id]/history`) — chronological log with change type badges (Received/Order/Adjustment), green/red quantity indicators, stock snapshots
+- "Check In Delivery" button added to ingredients page header
+- "View History" link added to mobile ingredient detail sheet
+- Admin API methods: `restockIngredient`, `bulkRestock`, `getInventoryHistory`, `getIngredient`
 
-#### Step 2: Add restock endpoint
-- **File:** `src/Server/EndPoints/IngredientEndpoints.cs`
-- `POST /api/ingredients/{id}/restock`
-  - Accepts `{ quantity: decimal, notes?: string }`
-  - **Adds** `quantity` to the ingredient's current `StockQuantity` (not overwrite)
-  - Creates an `InventoryLog` entry with `ChangeType = Received`
-  - Returns updated ingredient DTO
-  - Owner authorization
+### Files Created
+- `src/Shared/Entities/InventoryLog.cs`
+- `src/Shared/Enums/InventoryChangeType.cs`
+- `src/Shared/DTOs/InventoryLogDto.cs`
+- `src/next-client/src/app/admin/(dashboard)/ingredients/restock/page.tsx`
+- `src/next-client/src/app/admin/(dashboard)/ingredients/[id]/history/page.tsx`
+- `src/next-client/src/__tests__/components/restock-page.test.tsx` — 7 tests
+- `src/next-client/src/__tests__/components/ingredient-history.test.tsx` — 5 tests
+- `tests/MannaHp.Server.Tests/Endpoints/RestockEndpointTests.cs` — 7 tests
 
-#### Step 3: Add bulk restock endpoint
-- **File:** `src/Server/EndPoints/IngredientEndpoints.cs`
-- `POST /api/ingredients/bulk-restock`
-  - Accepts array of `{ ingredientId, quantity, notes? }`
-  - Adds quantities in a single transaction, creates log entries for each
-  - Owner authorization
-
-#### Step 4: Log order decrements
-- **File:** `src/Server/EndPoints/OrderEndpoints.cs`
-- When an order is marked Completed and stock is decremented, also write `InventoryLog` entries with `ChangeType = OrderDecrement`
-
-#### Step 5: Add receiving UI
-- **File:** `src/next-client/src/app/admin/(dashboard)/ingredients/restock/page.tsx` (new)
-- Shows all ingredients in a list with current stock and an "Add" input field
-- Enter quantities received for each ingredient (leave blank to skip)
-- Optional notes field (e.g., "Sysco delivery 3/10")
-- "Submit Delivery" button sends bulk restock request
-- Success toast with summary: "Restocked 8 ingredients"
-- Link from ingredients page header: "Check In Delivery" button
-
-#### Step 6: Add inventory history view
-- **File:** `src/next-client/src/app/admin/(dashboard)/ingredients/[id]/history/page.tsx` (new)
-- Shows chronological log of all stock changes for a single ingredient
-- Each entry: date, change type, quantity change (+/-), resulting stock, notes, user
-- Accessible from ingredient detail/edit sheet via "View History" link
-
-### Tests (Write Before Implementation)
-
-#### Unit Tests — `src/next-client/src/__tests__/components/restock-page.test.tsx`
-```
-1. renders all ingredients with current stock levels
-2. "Add" input accepts numeric values
-3. ingredients with no input are excluded from submission
-4. "Submit Delivery" sends only modified ingredients to bulk-restock endpoint
-5. shows success toast with count of restocked ingredients
-6. optional notes field is included in the request
-7. form resets after successful submission
-```
-
-#### Unit Tests — `src/next-client/src/__tests__/components/ingredient-history.test.tsx`
-```
-1. renders chronological list of inventory changes
-2. shows change type badge (Received / Order / Adjustment)
-3. positive changes show green "+X", negative show red "-X"
-4. each entry shows resulting stock level
-5. shows "No history" when log is empty
-```
-
-#### Integration Tests (Backend) — `tests/MannaHp.Server.Tests/Endpoints/RestockEndpointTests.cs`
-```
-1. POST /api/ingredients/{id}/restock adds to current stock (not overwrites)
-2. restock creates an InventoryLog entry with ChangeType = Received
-3. bulk-restock updates multiple ingredients in a single transaction
-4. restock rejects negative quantities
-5. requires Owner authorization
-6. completing an order creates InventoryLog entries with ChangeType = OrderDecrement
-7. inventory log records the correct NewStockQuantity snapshot
-```
+### Files Modified
+- `src/Server/Data/MannaDbContext.cs` — InventoryLog DbSet + model config
+- `src/Server/EndPoints/IngredientEndpoints.cs` — restock, bulk-restock, history endpoints
+- `src/Server/EndPoints/OrderEndpoints.cs` — log order decrements
+- `src/next-client/src/types/api.ts` — InventoryChangeType enum, InventoryLogDto, request types
+- `src/next-client/src/lib/admin-api.ts` — 4 new API methods
+- `src/next-client/src/app/admin/(dashboard)/ingredients/page.tsx` — "Check In Delivery" button, "View History" link
 
 ### Relationship to F9 (Bulk Stock Update)
-F9 covers a "restock mode" with inline editing that **overwrites** stock values. F13 replaces that concept with **additive** receiving and an audit trail. If F13 is implemented, F9's inline overwrite mode becomes less necessary — consider merging F9's UI ideas (inline inputs on the ingredients table) into F13's receiving flow.
+F13 supersedes F9's overwrite-based restock. The additive receiving flow with audit trail is superior. F9 can be considered resolved by F13.
 
 ---
 

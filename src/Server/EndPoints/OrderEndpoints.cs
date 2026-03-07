@@ -337,7 +337,18 @@ public static class OrderEndpoints
         foreach (var ingredient in ingredients)
         {
             if (decrements.TryGetValue(ingredient.Id, out var amount))
+            {
                 ingredient.StockQuantity -= amount;
+
+                db.InventoryLogs.Add(new InventoryLog
+                {
+                    IngredientId = ingredient.Id,
+                    ChangeType = InventoryChangeType.OrderDecrement,
+                    QuantityChange = -amount,
+                    NewStockQuantity = ingredient.StockQuantity,
+                    Notes = $"Order #{order.OrderNumber}",
+                });
+            }
         }
     }
 
