@@ -260,9 +260,16 @@ public static class OrderEndpoints
             order.UpdatedAt = DateTime.UtcNow;
 
             // Decrement inventory only on transition to Completed (guard against double-decrement)
+            bool hasLowStock = false;
+            int lowStockCount = 0;
             if (req.Status == OrderStatus.Completed && previousStatus != OrderStatus.Completed)
             {
                 await DecrementInventoryAsync(db, order);
+
+                // Check if any active ingredients are now below their low stock threshold
+                lowStockCount = await db.Ingredients
+                    .CountAsync(i => i.Active && i.StockQuantity < i.LowStockThreshold);
+                hasLowStock = lowStockCount > 0;
             }
 
             order.Status = req.Status;
@@ -274,6 +281,13 @@ public static class OrderEndpoints
             // Broadcast status change to kitchen + individual order watchers
             await hub.Clients.Group("kitchen").SendAsync("OrderStatusChanged", update);
             await hub.Clients.Group($"order-{id}").SendAsync("OrderStatusChanged", update);
+
+            // Broadcast low stock alert if any ingredients dropped below threshold
+            if (hasLowStock)
+            {
+                await hub.Clients.Group("kitchen").SendAsync("LowStockAlert",
+                    new { lowStockCount });
+            }
 
             return Results.Ok(update);
         }).AddEndpointFilter<ValidationFilter<UpdateOrderStatusRequest>>()

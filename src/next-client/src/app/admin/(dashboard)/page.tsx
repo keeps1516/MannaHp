@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/store/auth-context";
 import { adminApi } from "@/lib/admin-api";
+import { connectOrderHub, disconnectOrderHub } from "@/lib/order-hub";
 import { OrderStatus } from "@/types/api";
 import type { OrderDto } from "@/types/api";
 
@@ -67,6 +68,27 @@ export default function AdminDashboardPage() {
     fetchData();
   }, [fetchData]);
 
+  // Subscribe to SignalR for real-time low stock alerts
+  useEffect(() => {
+    let hubConn: { on: (event: string, handler: (...args: unknown[]) => void) => void; off: (event: string) => void } | null = null;
+
+    connectOrderHub(
+      () => {}, // onOrderCreated — not used on dashboard
+      () => {}, // onOrderStatusChanged — not used on dashboard
+    ).then((conn) => {
+      hubConn = conn as unknown as typeof hubConn;
+      conn.on("LowStockAlert", (alert: { lowStockCount: number }) => {
+        setLowStockCount(alert.lowStockCount);
+      });
+    }).catch(() => {
+      // silent — SignalR is non-critical for dashboard
+    });
+
+    return () => {
+      disconnectOrderHub().catch(() => {});
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -112,13 +134,23 @@ export default function AdminDashboardPage() {
           </div>
         </Link>
 
-        <DashboardCard
-          title="Low Stock Items"
-          value={loading ? null : String(lowStockCount ?? "0")}
-          icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
-          iconBg="bg-amber-400/10"
-          alert={lowStockCount !== null && lowStockCount > 0}
-        />
+        {/* Low Stock Items — only shown when count > 0 */}
+        {!loading && lowStockCount !== null && lowStockCount > 0 && (
+          <Link href="/admin/ingredients" className="group">
+            <div
+              data-testid="low-stock-card"
+              className="rounded-lg border border-amber-400/30 bg-[#0d1f3c] p-5 space-y-3 group-hover:border-amber-400/50 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[#7a9bb5]">Low Stock Items</p>
+                <div className="h-9 w-9 rounded-lg bg-amber-400/10 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-amber-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-amber-400">{lowStockCount}</p>
+            </div>
+          </Link>
+        )}
         <DashboardCard
           title="Today's Revenue"
           value={loading ? null : `$${(todayRevenue ?? 0).toFixed(2)}`}

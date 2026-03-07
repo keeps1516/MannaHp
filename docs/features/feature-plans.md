@@ -104,48 +104,25 @@
 
 ---
 
-## F3: Low Stock Items Card Conditional Display + Real-time
+## F3: Low Stock Items Card Conditional Display + Real-time ✅
 
+**Status:** Complete
 **UX Evaluation Ref:** [Enhancement #22](../ux-evaluation.md) - "Low Stock Items Card"
 **Priority:** P3
 **Mobile Impact:** Medium - cleaner dashboard
 
-### Current State
-- Dashboard always shows the "Low Stock Items" card, even when count is 0
-- Shows amber styling when count > 0, but still renders when 0
-- No real-time updates — requires page refresh to see changes
+### Implementation Notes
+- Low stock card only renders when `lowStockCount > 0` — hidden entirely when all stock is healthy
+- Card is clickable, links to `/admin/ingredients` (`data-testid="low-stock-card"`)
+- Card uses amber border/text styling to draw attention
+- Dashboard subscribes to SignalR `LowStockAlert` event via `connectOrderHub` for real-time updates
+- Backend: after `DecrementInventoryAsync`, counts active ingredients below threshold and broadcasts `LowStockAlert { lowStockCount }` to kitchen group (only when count > 0)
 
-### Plan
-
-#### Step 1: Conditionally render low stock card
-- **File:** `src/next-client/src/app/admin/(dashboard)/page.tsx`
-- Only render the Low Stock card when `lowStockCount > 0`
-- When hidden, the grid layout should still look clean (adjust grid columns)
-
-#### Step 2: Add SignalR subscription for low stock alerts
-- **File:** `src/Server/Hubs/OrderHub.cs` (or relevant hub)
-- When an order is completed and inventory is decremented, check if any ingredient crosses below its `lowStockThreshold`
-- Broadcast a `LowStockAlert` event to the `kitchen` SignalR group with ingredient details
-- **File:** `src/next-client/src/app/admin/(dashboard)/page.tsx`
-- Subscribe to `LowStockAlert` on the dashboard page
-- Update the low stock count in real-time when alert received
-
-### Tests (Write Before Implementation)
-
-#### Unit Tests — `src/next-client/src/__tests__/components/admin-dashboard.test.tsx`
-```
-1. does NOT render low stock card when no ingredients are below threshold
-2. renders low stock card when at least one ingredient is below threshold
-3. low stock card shows correct count of low-stock ingredients
-4. low stock card updates count when SignalR LowStockAlert event received
-```
-
-#### Integration Tests (Backend) — `src/Server.Tests/LowStockAlertTests.cs`
-```
-1. completing an order that drops ingredient below threshold triggers LowStockAlert
-2. completing an order that does NOT drop below threshold does not trigger alert
-3. LowStockAlert includes ingredient name and current quantity
-```
+### Files Modified
+- `src/next-client/src/app/admin/(dashboard)/page.tsx` — conditional low stock card, SignalR subscription
+- `src/next-client/src/__tests__/components/admin-dashboard.test.tsx` — 5 new F3 tests (12 total)
+- `src/Server/EndPoints/OrderEndpoints.cs` — low stock check + broadcast after inventory decrement
+- `tests/MannaHp.Server.Tests/SignalR/LowStockAlertTests.cs` — 3 backend integration tests (new file)
 
 ---
 

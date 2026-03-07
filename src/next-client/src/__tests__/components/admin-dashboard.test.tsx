@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, act } from "@testing-library/react";
 import AdminDashboardPage from "@/app/admin/(dashboard)/page";
 import { OrderStatus } from "@/types/api";
 
@@ -24,6 +24,20 @@ vi.mock("@/lib/admin-api", () => ({
   },
 }));
 
+// Mock SignalR order hub — capture event handlers
+const signalRHandlers: Record<string, (...args: unknown[]) => void> = {};
+vi.mock("@/lib/order-hub", () => ({
+  connectOrderHub: vi.fn(async () => {
+    return {
+      on: (event: string, handler: (...args: unknown[]) => void) => {
+        signalRHandlers[event] = handler;
+      },
+      off: vi.fn(),
+    };
+  }),
+  disconnectOrderHub: vi.fn(async () => {}),
+}));
+
 // Mock next/link
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
@@ -35,9 +49,26 @@ function makeOrder(status: OrderStatus) {
   return { id: crypto.randomUUID(), status };
 }
 
+function makeIngredient(overrides: Record<string, unknown> = {}) {
+  return {
+    id: crypto.randomUUID(),
+    name: "Test Ingredient",
+    unit: 0,
+    costPerUnit: 1.0,
+    stockQuantity: 100,
+    lowStockThreshold: 10,
+    active: true,
+    ...overrides,
+  };
+}
+
 describe("AdminDashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear captured SignalR handlers
+    for (const key of Object.keys(signalRHandlers)) {
+      delete signalRHandlers[key];
+    }
     getActiveOrdersMock.mockResolvedValue([]);
     getIngredientsMock.mockResolvedValue([]);
     getTodayRevenueMock.mockResolvedValue({ total: 234.56 });
@@ -121,7 +152,6 @@ describe("AdminDashboardPage", () => {
     await waitFor(() => {
       const grid = screen.getByTestId("stats-grid");
       const firstChild = grid.children[0];
-      // The first child should be the orders card link
       expect(firstChild.querySelector('[data-testid="orders-card"]') ?? firstChild).toHaveAttribute(
         "data-testid",
         "orders-card"
@@ -137,5 +167,84 @@ describe("AdminDashboardPage", () => {
     });
 
     expect(screen.queryByText("View Active Orders")).not.toBeInTheDocument();
+  });
+
+  // F3: Low Stock Items Card — conditional display
+  it("does NOT render low stock card when no ingredients are below threshold", async () => {
+    getIngredientsMock.mockResolvedValue([
+      makeIngredient({ stockQuantity: 100, lowStockThreshold: 10 }),
+    ]);
+
+    render(<AdminDashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("$234.56")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("Low Stock Items")).not.toBeInTheDocument();
+  });
+
+  it("renders low stock card when at least one ingredient is below threshold", async () => {
+    getIngredientsMock.mockResolvedValue([
+      makeIngredient({ stockQuantity: 5, lowStockThreshold: 10 }),
+    ]);
+
+    render(<AdminDashboardPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Low Stock Items")).toBeInTheDocument();
+    });
+  });
+
+  it("low stock card shows correct count of low-stock ingredients", async () => {
+    getIngredientsMock.mockResolvedValue([
+      makeIngredient({ stockQuantity: 5, lowStockThreshold: 10 }),
+      makeIngredient({ stockQuantity: 3, lowStockThreshold: 10 }),
+      makeIngredient({ stockQuantity: 100, lowStockThreshold: 10 }), // above threshold
+    ]);
+
+    render(<AdminDashboardPage />);
+
+    await waitFor(() => {
+      const card = screen.getByTestId("low-stock-card");
+      expect(within(card).getByText("2")).toBeInTheDocument();
+    });
+  });
+
+  it("low stock card links to /admin/ingredients", async () => {
+    getIngredientsMock.mockResolvedValue([
+      makeIngredient({ stockQuantity: 5, lowStockThreshold: 10 }),
+    ]);
+
+    render(<AdminDashboardPage />);
+
+    await waitFor(() => {
+      const card = screen.getByTestId("low-stock-card");
+      expect(card.closest("a")).toHaveAttribute("href", "/admin/ingredients");
+    });
+  });
+
+  it("low stock card updates count when LowStockAlert event received", async () => {
+    // Start with 1 low stock ingredient
+    getIngredientsMock.mockResolvedValue([
+      makeIngredient({ stockQuantity: 5, lowStockThreshold: 10 }),
+    ]);
+
+    render(<AdminDashboardPage />);
+
+    await waitFor(() => {
+      const card = screen.getByTestId("low-stock-card");
+      expect(within(card).getByText("1")).toBeInTheDocument();
+    });
+
+    // Simulate a LowStockAlert from SignalR with lowStockCount = 3
+    await act(async () => {
+      signalRHandlers["LowStockAlert"]?.({ lowStockCount: 3 });
+    });
+
+    await waitFor(() => {
+      const card = screen.getByTestId("low-stock-card");
+      expect(within(card).getByText("3")).toBeInTheDocument();
+    });
   });
 });
