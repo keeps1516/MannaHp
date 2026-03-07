@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { resolveImageUrl } from "@/lib/api";
@@ -38,12 +37,11 @@ export function ItemCard({ item }: ItemCardProps) {
           {/* Thumbnail */}
           {item.imageUrl ? (
             <div className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-[#0f1f35]">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={resolveImageUrl(item.imageUrl)}
                 alt={item.name}
-                fill
-                className="object-cover"
-                sizes="56px"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             </div>
           ) : (

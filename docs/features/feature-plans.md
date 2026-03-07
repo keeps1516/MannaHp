@@ -743,8 +743,7 @@
 - `src/next-client/src/lib/admin-api.ts`: Added `uploadMenuItemImage()` (multipart/form-data POST) and `deleteMenuItemImage()` methods.
 - `src/next-client/src/components/admin/menu-item-form-sheet.tsx`: Added image section at top of edit form — upload zone when no image, preview with Change/Remove buttons when image exists, "Not an accurate image" checkbox for `imageApproximate`.
 - `src/next-client/src/components/admin/menu-item-list.tsx`: Added 32x32 image thumbnails before item names in the grid, with letter fallback when no image.
-- `src/next-client/src/components/item-card.tsx` and `fixed-item-detail.tsx`: Updated to use `resolveImageUrl()` so uploaded images resolve correctly from the API server.
-- `src/next-client/next.config.ts`: Added `images.remotePatterns` for the API hostname so Next.js `Image` component can load remote images.
+- `src/next-client/src/components/item-card.tsx` and `fixed-item-detail.tsx`: Switched from Next.js `Image` to plain `<img>` with `resolveImageUrl()`. Next.js `Image` requires server-side optimization proxy which can't reliably reach the API server for uploaded images. Plain `<img>` works for both seed images (relative paths) and uploaded images (API URLs).
 
 **Test infrastructure:**
 - `src/next-client/src/__tests__/setup.ts`: Added `ResizeObserver` polyfill for Radix UI Sheet components in jsdom.

@@ -79,4 +79,20 @@ describe("ItemCard", () => {
     expect(fallback).toBeInTheDocument();
     expect(fallback.textContent).toContain("L");
   });
+
+  it("renders uploaded image with correct src for /uploads/ path", () => {
+    render(<ItemCard item={makeItem({ imageUrl: "/uploads/menu/abc-123.jpg" })} />);
+    const img = screen.getByAltText("Latte");
+    expect(img).toBeInTheDocument();
+    // Uploaded images should resolve to full API URL
+    expect(img.getAttribute("src")).toContain("/uploads/menu/abc-123.jpg");
+  });
+
+  it("renders seed image with correct src for /menu/ path", () => {
+    render(<ItemCard item={makeItem({ imageUrl: "/menu/latte.jpg" })} />);
+    const img = screen.getByAltText("Latte");
+    expect(img).toBeInTheDocument();
+    // Seed images stay as relative paths (served by Next.js public dir)
+    expect(img.getAttribute("src")).toBe("/menu/latte.jpg");
+  });
 });

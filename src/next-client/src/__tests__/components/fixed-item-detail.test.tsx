@@ -24,14 +24,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("next/image", () => ({
-  __esModule: true,
-  default: (props: Record<string, unknown>) => {
-    const { fill, priority, ...rest } = props;
-    return <img {...rest} />;
-  },
-}));
-
 function makeAddOn(
   overrides: Partial<AvailableIngredientDto> = {}
 ): AvailableIngredientDto {
@@ -157,5 +149,19 @@ describe("FixedItemDetail", () => {
     const fallback = screen.getByTestId("image-fallback");
     expect(fallback).toBeInTheDocument();
     expect(fallback.textContent).toContain("Latte");
+  });
+
+  it("renders uploaded image with correct src for /uploads/ path", () => {
+    renderFixed(makeLatte({ imageUrl: "/uploads/menu/abc-123.jpg" }));
+    const img = screen.getByAltText("Latte");
+    expect(img).toBeInTheDocument();
+    expect(img.getAttribute("src")).toContain("/uploads/menu/abc-123.jpg");
+  });
+
+  it("renders seed image with relative src for /menu/ path", () => {
+    renderFixed(makeLatte({ imageUrl: "/menu/latte.jpg" }));
+    const img = screen.getByAltText("Latte");
+    expect(img).toBeInTheDocument();
+    expect(img.getAttribute("src")).toContain("/menu/latte.jpg");
   });
 });

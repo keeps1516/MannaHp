@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useRef, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Minus, Plus } from "lucide-react";
@@ -150,13 +149,11 @@ export function FixedItemDetail({ menuItem }: FixedItemDetailProps) {
       {/* Hero image */}
       {menuItem.imageUrl ? (
         <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#163a50]">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src={resolveImageUrl(menuItem.imageUrl)}
             alt={menuItem.name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 768px"
-            priority
+            className="absolute inset-0 w-full h-full object-cover"
           />
           {menuItem.imageApproximate && (
             <span className="absolute bottom-2 right-2 text-[10px] text-white/70 bg-black/50 px-2 py-0.5 rounded-full">
