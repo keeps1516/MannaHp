@@ -13,6 +13,25 @@
         "-y",
         "next-devtools-mcp@latest"
       ]
+    },
+    "dotnet-mcp": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": [
+        "Community.Mcp.DotNet@1.*",
+        "--yes"
+      ],
+      "env": {}
+    },
+    "nuget-mcp": {
+      "type": "stdio",
+      "command": "dnx",
+      "args": [
+        "NuGet.Mcp.Server",
+        "--prerelease",
+        "--yes"
+      ],
+      "env": {}
     }
   }
 }

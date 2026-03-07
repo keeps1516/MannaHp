@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
-import { ArrowLeft, Loader2, ShieldCheck, Store, CreditCard } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/store/cart-context";
@@ -14,21 +14,15 @@ import { getLineTotal, getDisplayName } from "@/types/cart";
 import { toast } from "sonner";
 import { CheckoutForm } from "@/components/checkout-form";
 
-type PaymentMode = "card" | "counter" | null;
-
 export default function CheckoutPage() {
   const cart = useCart();
   const router = useRouter();
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [counterMessage, setCounterMessage] = useState<string | null>(null);
   const orderCreatedRef = useRef(false);
-
-  const hasStoreToken = typeof window !== "undefined" && !!localStorage.getItem("storeToken");
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -47,7 +41,7 @@ export default function CheckoutPage() {
       : null,
   }));
 
-  // Card payment flow
+  // Start card payment immediately on mount
   const startCardPayment = useCallback(async () => {
     if (orderCreatedRef.current) return;
     orderCreatedRef.current = true;
@@ -79,58 +73,11 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pay at counter flow
-  const startCounterPayment = useCallback(async () => {
-    const storeToken = localStorage.getItem("storeToken");
-    if (!storeToken) {
-      setCounterMessage("Please scan the QR code at our counter to place an in-store order.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setCounterMessage(null);
-
-    try {
-      const validation = await api.validateStoreToken(storeToken);
-      if (!validation.valid) {
-        localStorage.removeItem("storeToken");
-        // Fetch custom message from settings
-        try {
-          const settings = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5082"}/api/settings/public`
-          );
-          const data = await settings.json();
-          setCounterMessage(
-            data.storeTokenRequiredMessage ??
-              "Please scan the QR code at our counter to place an in-store order."
-          );
-        } catch {
-          setCounterMessage("Please scan the QR code at our counter to place an in-store order.");
-        }
-        setLoading(false);
-        return;
-      }
-
-      const response = await api.createOrder({
-        paymentMethod: PaymentMethod.InStore,
-        notes: null,
-        items: cartItems,
-      });
-
-      cart.clear();
-      router.push(`/order/${response.order.id}`);
-    } catch {
-      setError("Failed to place order. Please try again.");
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => {
-    if (paymentMode === "card") startCardPayment();
-    if (paymentMode === "counter") startCounterPayment();
-  }, [paymentMode, startCardPayment, startCounterPayment]);
+    if (cart.items.length > 0) {
+      startCardPayment();
+    }
+  }, [cart.items.length, startCardPayment]);
 
   const handlePaymentSuccess = useCallback(() => {
     cart.clear();
@@ -159,9 +106,9 @@ export default function CheckoutPage() {
       </Button>
 
       <div>
-        <h1 className="text-2xl font-bold text-white">Checkout</h1>
+        <h1 className="text-2xl font-bold text-white">Pay Online</h1>
         <p className="text-sm text-[#7a9bb5] mt-1">
-          Choose how you&apos;d like to pay
+          Enter your card details to complete your order
         </p>
       </div>
 
@@ -204,153 +151,86 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Payment Method Selection */}
-      {!paymentMode && (
-        <div className="space-y-3">
-          <h2 className="font-semibold text-white text-sm">Payment Method</h2>
-          <div className="grid grid-cols-1 gap-3">
-            <button
-              onClick={() => setPaymentMode("card")}
-              className="flex items-center gap-3 rounded-xl border border-[#1e3a5f] bg-[#163a50] p-4 text-left transition-colors hover:border-[#00e5ff]/50"
-            >
-              <CreditCard className="h-5 w-5 text-[#00e5ff]" />
-              <div>
-                <p className="font-medium text-white text-sm">Pay with Card</p>
-                <p className="text-xs text-[#7a9bb5]">Credit or debit card</p>
-              </div>
-            </button>
-            {hasStoreToken && (
-              <button
-                onClick={() => setPaymentMode("counter")}
-                className="flex items-center gap-3 rounded-xl border border-[#1e3a5f] bg-[#163a50] p-4 text-left transition-colors hover:border-[#00e5ff]/50"
-              >
-                <Store className="h-5 w-5 text-[#00e5ff]" />
-                <div>
-                  <p className="font-medium text-white text-sm">Pay at Counter</p>
-                  <p className="text-xs text-[#7a9bb5]">Pay when you pick up</p>
-                </div>
-              </button>
-            )}
-          </div>
+      {/* Payment Section */}
+      <div className="bg-[#163a50] border border-[#1e3a5f] rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-[#00e5ff]" />
+          <h2 className="font-semibold text-white text-sm">Payment Details</h2>
         </div>
-      )}
+        <Separator className="bg-[#1e3a5f]" />
 
-      {/* Counter payment message */}
-      {counterMessage && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-amber-200 text-sm">
-          {counterMessage}
-        </div>
-      )}
-
-      {/* Payment Section (card) */}
-      {paymentMode === "card" && (
-        <div className="bg-[#163a50] border border-[#1e3a5f] rounded-xl p-4 space-y-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#00e5ff]" />
-            <h2 className="font-semibold text-white text-sm">Payment Details</h2>
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-[#00e5ff]" />
+            <span className="ml-2 text-sm text-[#7a9bb5]">
+              Setting up payment...
+            </span>
           </div>
-          <Separator className="bg-[#1e3a5f]" />
+        )}
 
-          {loading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-[#00e5ff]" />
-              <span className="ml-2 text-sm text-[#7a9bb5]">
-                Setting up payment...
-              </span>
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-lg border border-[#ff4757]/40 bg-[#ff4757]/10 p-3 text-[#ff4757] text-sm">
-              {error}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-[#ff4757] hover:text-white"
-                onClick={() => {
-                  setPaymentMode(null);
-                  setError(null);
-                  orderCreatedRef.current = false;
-                }}
-              >
-                Try again
-              </Button>
-            </div>
-          )}
-
-          {clientSecret && stripePromise && orderId && (
-            <Elements
-              stripe={stripePromise}
-              options={{
-                clientSecret,
-                appearance: {
-                  theme: "night",
-                  variables: {
-                    colorPrimary: "#00e5ff",
-                    colorBackground: "#0f1f35",
-                    colorText: "#ffffff",
-                    colorTextSecondary: "#7a9bb5",
-                    colorDanger: "#ff4757",
-                    borderRadius: "8px",
-                    fontFamily: "inherit",
-                  },
-                  rules: {
-                    ".Input": {
-                      backgroundColor: "#0a1628",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    },
-                    ".Input:focus": {
-                      borderColor: "#00e5ff",
-                      boxShadow: "0 0 0 1px #00e5ff",
-                    },
-                    ".Label": {
-                      color: "#7a9bb5",
-                    },
-                  },
-                },
+        {error && (
+          <div className="rounded-lg border border-[#ff4757]/40 bg-[#ff4757]/10 p-3 text-[#ff4757] text-sm">
+            {error}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 text-[#ff4757] hover:text-white"
+              onClick={() => {
+                setError(null);
+                orderCreatedRef.current = false;
+                startCardPayment();
               }}
             >
-              <CheckoutForm
-                orderId={orderId}
-                total={cart.total}
-                onSuccess={handlePaymentSuccess}
-                onError={handlePaymentError}
-              />
-            </Elements>
-          )}
+              Try again
+            </Button>
+          </div>
+        )}
 
-          <p className="text-xs text-[#7a9bb5] text-center">
-            Payments processed securely by Stripe
-          </p>
-        </div>
-      )}
-
-      {/* Counter payment loading */}
-      {paymentMode === "counter" && loading && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-[#00e5ff]" />
-          <span className="ml-2 text-sm text-[#7a9bb5]">
-            Placing your order...
-          </span>
-        </div>
-      )}
-
-      {paymentMode === "counter" && error && (
-        <div className="rounded-lg border border-[#ff4757]/40 bg-[#ff4757]/10 p-3 text-[#ff4757] text-sm">
-          {error}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-2 text-[#ff4757] hover:text-white"
-            onClick={() => {
-              setPaymentMode(null);
-              setError(null);
+        {clientSecret && stripePromise && orderId && (
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret,
+              appearance: {
+                theme: "night",
+                variables: {
+                  colorPrimary: "#00e5ff",
+                  colorBackground: "#0f1f35",
+                  colorText: "#ffffff",
+                  colorTextSecondary: "#7a9bb5",
+                  colorDanger: "#ff4757",
+                  borderRadius: "8px",
+                  fontFamily: "inherit",
+                },
+                rules: {
+                  ".Input": {
+                    backgroundColor: "#0a1628",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  },
+                  ".Input:focus": {
+                    borderColor: "#00e5ff",
+                    boxShadow: "0 0 0 1px #00e5ff",
+                  },
+                  ".Label": {
+                    color: "#7a9bb5",
+                  },
+                },
+              },
             }}
           >
-            Try again
-          </Button>
-        </div>
-      )}
+            <CheckoutForm
+              orderId={orderId}
+              total={cart.total}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+          </Elements>
+        )}
+
+        <p className="text-xs text-[#7a9bb5] text-center">
+          Payments processed securely by Stripe
+        </p>
+      </div>
     </div>
   );
 }

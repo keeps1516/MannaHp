@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, RefreshCw, Trash2, Maximize2 } from "lucide-react";
+import { Loader2, RefreshCw, Trash2, Maximize2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { adminApi } from "@/lib/admin-api";
 import { useAuth } from "@/store/auth-context";
@@ -21,6 +22,9 @@ export default function QrCodePage() {
   const [generating, setGenerating] = useState(false);
   const [durationDays, setDurationDays] = useState(7);
   const [fullScreen, setFullScreen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [customerMessage, setCustomerMessage] = useState("");
+  const [savingMessage, setSavingMessage] = useState(false);
 
   const fetchToken = useCallback(async () => {
     if (!authToken) return;
@@ -34,9 +38,19 @@ export default function QrCodePage() {
     }
   }, [authToken]);
 
+  const fetchMessage = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const settings = await adminApi.getSettings(authToken);
+      const msg = settings.find((s) => s.key === "StoreTokenRequiredMessage");
+      if (msg) setCustomerMessage(msg.value);
+    } catch { /* ignore */ }
+  }, [authToken]);
+
   useEffect(() => {
     fetchToken();
-  }, [fetchToken]);
+    fetchMessage();
+  }, [fetchToken, fetchMessage]);
 
   async function handleGenerate() {
     if (!authToken) return;
@@ -49,6 +63,21 @@ export default function QrCodePage() {
       toast.error("Failed to generate QR code");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleSaveMessage() {
+    if (!authToken) return;
+    setSavingMessage(true);
+    try {
+      await adminApi.updateSettings(authToken, [
+        { key: "StoreTokenRequiredMessage", value: customerMessage },
+      ]);
+      toast.success("Customer message saved");
+    } catch {
+      toast.error("Failed to save message");
+    } finally {
+      setSavingMessage(false);
     }
   }
 
@@ -93,6 +122,37 @@ export default function QrCodePage() {
         </p>
       </div>
 
+      {/* Customer Message */}
+      <div className="bg-[#163a50] border border-[#1e3a5f] rounded-xl p-4 space-y-3">
+        <h2 className="font-semibold text-white text-sm">
+          Customer Message
+        </h2>
+        <Separator className="bg-[#1e3a5f]" />
+        <p className="text-xs text-[#7a9bb5]">
+          Shown to customers who try to order without scanning the QR code.
+        </p>
+        <Textarea
+          value={customerMessage}
+          onChange={(e) => setCustomerMessage(e.target.value)}
+          placeholder="Please scan the QR code displayed on the TV before placing your order."
+          rows={2}
+          className="bg-[#0a1628] border-white/10 text-white placeholder:text-[#7a9bb5]/50 resize-none"
+        />
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSaveMessage}
+            disabled={savingMessage}
+            size="sm"
+            className="bg-[#00e5ff] text-[#0a1628] hover:bg-[#00e5ff]/80"
+          >
+            {savingMessage ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : null}
+            Save Message
+          </Button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-[#00e5ff]" />
@@ -113,6 +173,20 @@ export default function QrCodePage() {
             </div>
 
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(qrUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                  toast.success("Link copied to clipboard");
+                }}
+                className="border-[#1e3a5f] text-[#7a9bb5] hover:text-white hover:bg-white/5"
+              >
+                {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                {copied ? "Copied" : "Copy Link"}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"

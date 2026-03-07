@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Trash2, CreditCard, Store, Pencil } from "lucide-react";
+import { ShoppingCart, Trash2, Globe, Store, Pencil, QrCode, ScanLine } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +31,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
   const [placing, setPlacing] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | null>(null);
+  const [tokenPrompt, setTokenPrompt] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const pendingOrderIdRef = useRef<string | null>(null);
   const submittingRef = useRef(false);
@@ -43,12 +44,55 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
     }
   }, [router]);
 
+  async function fetchTokenMessage(): Promise<string> {
+    const fallback = "Please scan the QR code at our counter to place an in-store order.";
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5082"}/api/settings/public`
+      );
+      const data = await res.json();
+      return data.storeTokenRequiredMessage ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   async function handlePlaceOrder(e?: MouseEvent) {
     e?.preventDefault();
     if (cart.items.length === 0) return;
     if (submittingRef.current) return;
     submittingRef.current = true;
     setPlacing(true);
+    setTokenPrompt(null);
+
+    // Validate store token before placing order
+    const storeToken = localStorage.getItem("storeToken");
+    if (!storeToken) {
+      const msg = await fetchTokenMessage();
+      setTokenPrompt(msg);
+      setPlacing(false);
+      submittingRef.current = false;
+      return;
+    }
+
+    try {
+      const validation = await api.validateStoreToken(storeToken);
+      if (!validation.valid) {
+        localStorage.removeItem("storeToken");
+        const msg = await fetchTokenMessage();
+        setTokenPrompt(msg);
+        setPlacing(false);
+        submittingRef.current = false;
+        return;
+      }
+    } catch {
+      const msg = await fetchTokenMessage();
+      setTokenPrompt(msg);
+      setPlacing(false);
+      submittingRef.current = false;
+      return;
+    }
+
     try {
       const response = await api.createOrder({
         paymentMethod: PaymentMethod.InStore,
@@ -180,15 +224,31 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                 <span className="text-[#00e5ff]">${cart.total.toFixed(2)}</span>
               </div>
 
-              <div className="flex gap-2 mt-2">
+              {tokenPrompt && (
+                <div className="rounded-2xl border-2 border-amber-400 bg-amber-500/10 p-8 mt-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="flex flex-col items-center text-center space-y-5">
+                    <div className="relative">
+                      <div className="flex h-28 w-28 items-center justify-center rounded-full bg-amber-400/20 ring-4 ring-amber-400/30">
+                        <ScanLine className="h-14 w-14 text-amber-300" />
+                      </div>
+                      <div className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-amber-400 animate-pulse" />
+                    </div>
+                    <p className="text-xl text-white font-bold leading-snug">
+                      {tokenPrompt}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 mt-3">
                 <Button
                   className="flex-1 bg-[#00e5ff] text-[#0f1f35] hover:bg-[#00c8e0] font-semibold"
                   size="lg"
                   onClick={handlePayWithCard}
                   disabled={placing}
                 >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Pay with Card
+                  <Globe className="h-4 w-4 mr-2" />
+                  Pay Online
                 </Button>
                 <Button
                   className="flex-1 bg-white/10 text-white hover:bg-white/20 font-semibold border border-white/20"

@@ -18,12 +18,20 @@ public static class SettingsEndpoints
 
         group.MapGet("/public", async (MannaDbContext db) =>
         {
-            var taxRateSetting = await db.AppSettings
-                .FirstOrDefaultAsync(s => s.Key == "DefaultTaxRate");
-            var taxRate = taxRateSetting is not null
-                && decimal.TryParse(taxRateSetting.Value, out var parsed)
+            var keys = new[] { "DefaultTaxRate", "StoreTokenRequiredMessage" };
+            var settings = await db.AppSettings
+                .Where(s => keys.Contains(s.Key))
+                .ToDictionaryAsync(s => s.Key, s => s.Value);
+
+            var taxRate = settings.TryGetValue("DefaultTaxRate", out var taxStr)
+                && decimal.TryParse(taxStr, out var parsed)
                 ? parsed : 0.0825m;
-            return Results.Ok(new { taxRate });
+
+            var storeTokenRequiredMessage = settings.GetValueOrDefault(
+                "StoreTokenRequiredMessage",
+                "Please scan the QR code at our counter to place an in-store order.");
+
+            return Results.Ok(new { taxRate, storeTokenRequiredMessage });
         });
 
         group.MapPut("/", async (List<SettingUpdate> updates, MannaDbContext db) =>

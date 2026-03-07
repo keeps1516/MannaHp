@@ -17,9 +17,21 @@ public static class OrderEndpoints
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
         // POST — place an order
-        group.MapPost("/", async (CreateOrderRequest req, MannaDbContext db,
+        group.MapPost("/", async (CreateOrderRequest req, HttpContext httpContext, MannaDbContext db,
             IHubContext<OrderHub> hub, StripeService stripe) =>
         {
+            // In-store orders require a valid store token
+            if (req.PaymentMethod == PaymentMethod.InStore)
+            {
+                var tokenHeader = httpContext.Request.Headers["X-Store-Token"].FirstOrDefault();
+                if (string.IsNullOrEmpty(tokenHeader))
+                    return Results.Json(new { error = "A valid store token is required for in-store orders." }, statusCode: 401);
+
+                var validToken = await db.StoreTokens.FirstOrDefaultAsync(t =>
+                    t.Token == tokenHeader && !t.Revoked && t.ExpiresAt > DateTime.UtcNow);
+                if (validToken is null)
+                    return Results.Json(new { error = "Store token is invalid or expired." }, statusCode: 401);
+            }
             var taxRateSetting = await db.AppSettings
                 .FirstOrDefaultAsync(s => s.Key == "DefaultTaxRate");
             var taxRate = taxRateSetting is not null
@@ -155,8 +167,7 @@ public static class OrderEndpoints
             return Results.Created($"/api/orders/{order.Id}",
                 new CreateOrderResponse(dto, clientSecret,
                     req.PaymentMethod == PaymentMethod.Card ? stripe.PublishableKey : null));
-        }).AddEndpointFilter<ValidationFilter<CreateOrderRequest>>()
-          .RequireAuthorization("CanOrder");
+        }).AddEndpointFilter<ValidationFilter<CreateOrderRequest>>();
 
         // POST — confirm payment (client calls after Stripe.confirmPayment succeeds)
         group.MapPost("/{id:guid}/confirm-payment", async (Guid id, MannaDbContext db,

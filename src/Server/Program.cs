@@ -1,12 +1,10 @@
 using System.Text;
 using FluentValidation;
-using MannaHp.Server.Auth;
 using MannaHp.Server.Data;
 using MannaHp.Server.Endpoints;
 using MannaHp.Server.Hubs;
 using MannaHp.Server.Services;
 using MannaHp.Shared.Validators;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -79,19 +77,12 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
     };
-})
-.AddScheme<AuthenticationSchemeOptions, StoreTokenAuthenticationHandler>("StoreToken", null);
+});
 
 // Authorization policies
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Owner", policy => policy.RequireRole("Owner"))
-    .AddPolicy("Staff", policy => policy.RequireRole("Owner", "Staff"))
-    .AddPolicy("CanOrder", policy =>
-    {
-        policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
-        policy.AuthenticationSchemes.Add("StoreToken");
-        policy.RequireAuthenticatedUser();
-    });
+    .AddPolicy("Staff", policy => policy.RequireRole("Owner", "Staff"));
 
 builder.Services.AddSingleton<TokenService>();
 

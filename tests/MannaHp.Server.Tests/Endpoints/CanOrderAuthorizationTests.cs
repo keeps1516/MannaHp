@@ -28,11 +28,26 @@ public class CanOrderAuthorizationTests
                 [Guid.Parse("e0000000-0001-0000-0000-000000000000")])]);  // seeded ingredient
 
     [Fact]
-    public async Task PlaceOrder_AuthenticatedJwtUser_Succeeds()
+    public async Task PlaceOrder_AuthenticatedJwtUser_InStore_Succeeds()
     {
-        var client = await _factory.CreateStaffClientAsync();
+        // Staff JWT also has a store token seeded, so InStore works
+        var client = _factory.CreateStoreTokenClient();
         var response = await client.PostAsJsonAsync("/api/orders", MakeOrderRequest());
         response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task PlaceOrder_CardPayment_NoAuth_Succeeds()
+    {
+        var client = _factory.CreateClient();
+        var req = new CreateOrderRequest(PaymentMethod.Card, null,
+            [new CreateOrderItemRequest(
+                Guid.Parse("c0000000-0001-0000-0000-000000000001"),
+                null, 1, null,
+                [Guid.Parse("e0000000-0001-0000-0000-000000000000")])]);
+        var response = await client.PostAsJsonAsync("/api/orders", req);
+        // Stripe not configured in test, so 422 (not 401) proves auth isn't blocking
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]

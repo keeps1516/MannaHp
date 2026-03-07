@@ -113,15 +113,13 @@ public class MannaApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     }
 
     /// <summary>
-    /// Returns an HttpClient that can place orders (satisfies CanOrder policy).
-    /// Uses staff JWT since store tokens may be revoked by StoreTokenEndpoint tests.
+    /// Returns an HttpClient with X-Store-Token header for placing InStore orders.
+    /// Uses the seeded store token that won't be revoked by other tests.
     /// </summary>
     public HttpClient CreateStoreTokenClient()
     {
-        _staffToken ??= LoginAsync("staff@manna.local", "MannaStaff123!").GetAwaiter().GetResult();
         var client = CreateClient();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _staffToken);
+        client.DefaultRequestHeaders.Add("X-Store-Token", _storeToken);
         return client;
     }
 
