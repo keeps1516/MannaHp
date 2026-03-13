@@ -168,7 +168,7 @@ public static class MenuItemEndpoints
                 "image/webp" => ".webp",
                 _ => ".jpg"
             };
-            var fileName = $"{id}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{ext}";
+            var fileName = $"{id.ToString("N")[..8]}-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{ext}";
             var filePath = Path.Combine(uploadsDir, fileName);
 
             await using (var stream = new FileStream(filePath, FileMode.Create))
