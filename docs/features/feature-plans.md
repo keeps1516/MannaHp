@@ -27,6 +27,7 @@
 | G12 | API Rate Limiting | [G12](#g12-api-rate-limiting) | Low - security hardening |
 | F15 | Email-Based Inventory Restocking | [F15](#f15-email-based-inventory-restocking) | Medium - automates supplier receipt processing |
 | F16 | TV Menu Board Display | [F16](#f16-tv-menu-board-display) | N/A - TV/kiosk display for in-store | ✅ |
+| F17 | Store Hours & Order Availability | [F17](#f17-store-hours--order-availability) | Critical - prevents orders when closed |
 
 ---
 
@@ -1879,3 +1880,172 @@ Add "TV Menu" nav item to admin sidebar between "QR Code" and "Settings":
 **Types & API:**
 - `src/next-client/src/types/api.ts`: Added `TvMenuConfig`, `SampleBowlConfig`, `ResolvedSampleBowl`, `TvMenuConfigResponse` types.
 - `src/next-client/src/lib/api.ts`: Added `getTvMenuConfig()` public method.
+
+---
+
+## F17: Store Hours & Order Availability
+
+**Priority:** F17
+**Created:** March 7, 2026
+
+### Problem
+
+There is no way to prevent customers from placing orders outside of business hours or when the store decides to stop accepting orders early (e.g., sold out, closing early, short-staffed). Orders placed when the kitchen is closed create confusion and bad customer experience.
+
+### Solution
+
+Two complementary mechanisms:
+
+1. **Scheduled store hours** — owner sets weekly operating hours (e.g., Mon-Fri 7am-3pm, Sat 8am-2pm, Sun closed). Orders are automatically blocked outside these windows.
+2. **Manual override toggle** — staff can instantly flip a "Not Accepting Orders" switch from the admin dashboard to stop orders immediately, regardless of scheduled hours. Useful for closing early, emergencies, or temporary pauses.
+
+Both mechanisms display a clear message to customers explaining why ordering is unavailable and when it will resume.
+
+### Requirements
+
+1. **Store hours configuration** — owner sets open/close times per day of week from admin settings
+2. **Manual override** — staff toggle on admin dashboard or orders page to pause/resume ordering instantly
+3. **Custom closed message** — owner configures the message shown to customers when ordering is unavailable (e.g., "We're closed for the day! See you tomorrow at 7am")
+4. **Order API enforcement** — `POST /api/orders` rejects orders with 403 when store is closed (scheduled or manual), returning the closed message
+5. **Customer-facing UI** — homepage and checkout show a banner/modal when store is closed, with the message and next opening time
+6. **Public availability endpoint** — anonymous endpoint for the frontend to check if ordering is currently available
+7. **TV display integration** — TV menu board shows a "Currently Closed" or "Open" indicator
+
+### Design Decisions
+
+#### Store Hours Storage
+
+Store hours stored as JSON in `app_settings` (key: `StoreHours`):
+
+```json
+{
+  "timezone": "America/Chicago",
+  "hours": {
+    "monday":    { "open": "07:00", "close": "15:00" },
+    "tuesday":   { "open": "07:00", "close": "15:00" },
+    "wednesday": { "open": "07:00", "close": "15:00" },
+    "thursday":  { "open": "07:00", "close": "15:00" },
+    "friday":    { "open": "07:00", "close": "15:00" },
+    "saturday":  { "open": "08:00", "close": "14:00" },
+    "sunday":    null
+  }
+}
+```
+
+- `null` means closed for the day
+- Times are in 24-hour format, interpreted in the configured timezone
+- Timezone stored as IANA string (e.g., `America/Chicago` for Central Time)
+
+#### Manual Override Storage
+
+Stored in `app_settings` (key: `OrderingPaused`):
+
+```json
+{
+  "paused": true,
+  "pausedAt": "2026-03-07T14:30:00Z",
+  "pausedBy": "staff@manna.com",
+  "message": "We've sold out for today! See you tomorrow at 7am."
+}
+```
+
+When `paused` is `false` or the key doesn't exist, the manual override is not active and scheduled hours apply.
+
+#### Closed Message
+
+Stored in `app_settings` (key: `StoreClosedMessage`):
+- Default: `"We're currently closed. Check back during our regular hours!"`
+- Used when store is closed due to scheduled hours (not manual override — the override has its own message)
+
+#### Availability Check Logic
+
+The store is **not accepting orders** when ANY of these is true:
+1. Manual override is active (`OrderingPaused.paused === true`)
+2. Current time is outside scheduled hours for today
+3. Today has no scheduled hours (`null`)
+
+Priority: manual override takes precedence — if paused, scheduled hours don't matter.
+
+### API Changes
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/settings/store-availability` | Anonymous | Returns `{ available, message, nextOpenTime, schedule }` |
+| `POST` | `/api/settings/pause-ordering` | Staff | Pause ordering with custom message |
+| `POST` | `/api/settings/resume-ordering` | Staff | Resume ordering (clears manual override) |
+
+**Modified endpoints:**
+- `POST /api/orders` — check availability before creating order; return 403 with `{ message }` if store is closed
+- `GET /api/settings/public` — add `storeAvailable`, `storeClosedMessage`, `nextOpenTime` to response
+
+### Frontend Changes
+
+#### Admin — Store Hours Settings
+- **File:** `src/next-client/src/app/admin/(dashboard)/settings/page.tsx` (extend existing)
+- Add "Store Hours" section to settings page:
+  - Day-of-week grid with open/close time inputs per day
+  - Toggle to mark a day as closed
+  - Timezone selector dropdown
+  - Save button updates `StoreHours` setting
+
+#### Admin — Pause/Resume Toggle
+- **File:** `src/next-client/src/app/admin/(dashboard)/page.tsx` (dashboard) or orders page
+- Add a prominent toggle/button at top of dashboard:
+  - When ordering is active: green "Accepting Orders" indicator with "Pause Ordering" button
+  - When paused: red "Not Accepting Orders" banner with the pause message, "Resume Ordering" button
+  - Pausing opens a dialog to enter a custom message
+- Also add to the orders page header for quick access
+
+#### Customer — Closed Banner
+- **File:** `src/next-client/src/app/(customer)/page.tsx` (homepage)
+- On mount, check `/api/settings/store-availability`
+- If unavailable: show a banner at top of page with the closed message and next opening time
+- "Add to Cart" buttons disabled when closed
+- **File:** `src/next-client/src/app/(customer)/checkout/page.tsx`
+- If unavailable at checkout time: redirect to homepage with message (prevents stale cart submission)
+
+#### TV Display — Status Indicator
+- **File:** `src/next-client/src/components/tv/tv-menu-board.tsx`
+- Show "OPEN" or "CLOSED" badge in the header based on availability
+
+### Tests (Write Before Implementation)
+
+#### Backend — `tests/MannaHp.Server.Tests/Endpoints/StoreAvailabilityTests.cs`
+```
+1. GET /api/settings/store-availability returns available:true during open hours
+2. GET /api/settings/store-availability returns available:false outside open hours
+3. GET /api/settings/store-availability returns available:false when manually paused
+4. Manual pause takes precedence over scheduled open hours
+5. Returns correct nextOpenTime for closed periods
+6. Returns available:false when today has no scheduled hours (null/closed day)
+7. POST /api/orders returns 403 when store is closed
+8. POST /api/orders returns 403 with message when manually paused
+9. POST /api/orders succeeds when store is open
+10. POST /api/settings/pause-ordering requires Staff authorization
+11. POST /api/settings/resume-ordering clears paused state
+12. Timezone-aware: uses configured timezone for schedule checks
+```
+
+#### Frontend — `src/next-client/src/__tests__/components/store-availability.test.tsx`
+```
+1. homepage shows closed banner when store is unavailable
+2. homepage hides banner when store is available
+3. closed banner displays the correct message
+4. closed banner shows next opening time
+5. "Add to Cart" buttons disabled when store is closed
+6. checkout redirects to homepage when store closes mid-session
+7. dashboard shows "Accepting Orders" when active
+8. dashboard shows "Not Accepting Orders" when paused
+9. pause button opens message dialog
+10. resume button clears pause state
+```
+
+### Implementation Order
+
+1. Store hours settings UI + backend save/load (extends existing settings page)
+2. Availability check endpoint (`GET /api/settings/store-availability`)
+3. Order API guard — reject orders when closed
+4. Pause/resume endpoints + admin toggle
+5. Customer-facing closed banner
+6. TV display status indicator
+7. Checkout guard

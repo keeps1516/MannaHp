@@ -34,9 +34,11 @@ public static class OrderEndpoints
             }
             var taxRateSetting = await db.AppSettings
                 .FirstOrDefaultAsync(s => s.Key == "DefaultTaxRate");
-            var taxRate = taxRateSetting is not null
-                ? decimal.TryParse(taxRateSetting.Value, out var parsed) ? parsed : 0.0825m
-                : 0.0825m;
+            if (taxRateSetting is null)
+                throw new InvalidOperationException("Missing required app setting: DefaultTaxRate");
+
+            if (!decimal.TryParse(taxRateSetting.Value, out var taxRate))
+                throw new InvalidOperationException($"Invalid DefaultTaxRate value: '{taxRateSetting.Value}'");
 
             var order = new Order
             {
@@ -176,7 +178,7 @@ public static class OrderEndpoints
             var order = await db.Orders
                 .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.Items).ThenInclude(oi => oi.Variant)
-                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Items).ThenInclude(oia => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order is null) return Results.NotFound();

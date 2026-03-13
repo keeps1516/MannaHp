@@ -25,7 +25,7 @@
 ```
 Customer Browser                    Server (ASP.NET Core)              External
 +-----------------------+          +------------------------+         +--------+
-| Next.js (Blazor PWA)  |  HTTP    | Minimal API Endpoints  |  SDK   | Stripe |
+| Next.js Frontend      |  HTTP    | Minimal API Endpoints  |  SDK   | Stripe |
 |                        | ------> | OrderEndpoints.cs      | -----> | API    |
 | Cart -> Checkout       |         | StripeWebhook.cs       | <----- |        |
 | Stripe Elements        |         | StripeService.cs       |         +--------+
@@ -224,34 +224,42 @@ public record UpdateOrderStatusRequest(OrderStatus Status);
 
 ### POST /api/orders — Create Order
 
-**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 20-151)
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 20-172)
 
 This is the core endpoint. Line-by-line:
 
 ```
-Line 22:   Accept CreateOrderRequest from body
-Line 23:   Tax rate hardcoded at 0.0825 (8.25%)
+Line 20:   Accept CreateOrderRequest from body
 
-Lines 25-32: Create Order entity
-  - Generate new GUID
+Lines 24-34: IN-STORE TOKEN VALIDATION (if PaymentMethod == InStore)
+  - Read X-Store-Token header from request
+  - Return 401 if header missing
+  - Look up token in DB: must exist, not revoked, not expired
+  - Return 401 if token invalid or expired
+
+Lines 35-41: TAX RATE FROM DB
+  - Fetch DefaultTaxRate from app_settings table
+  - Throw if setting missing or not a valid decimal
+
+Lines 43-50: Create Order entity
   - Set PaymentMethod from request
   - Set PaymentStatus = Pending
   - Set Status = Received
   - Set Notes from request
-  - Set CreatedAt/UpdatedAt = now
 
-Lines 34-112: Process each item in request.Items
-  Line 36:   Fetch MenuItem from DB (validate it exists)
-  Line 38:   Return 400 if menu item not found
+Lines 52-130: Process each item in request.Items
+  Line 54:   Fetch MenuItem from DB (validate it exists)
+  Line 56:   Return 400 if menu item not found
 
-  Lines 40-42: Create OrderItem with MenuItemId, Quantity, Notes
+  Lines 61-67: Create OrderItem with MenuItemId, Quantity, Notes
 
-  Lines 54-65: If VariantId provided (fixed-price items like coffee):
+  Lines 72-83: If VariantId provided (fixed-price items like coffee):
     - Fetch variant from DB
     - Validate variant belongs to this menu item
     - Set basePrice = variant.Price (e.g. $5.25 for 16oz Latte)
 
-  Lines 68-100: If SelectedIngredientIds provided (customizable items like bowls):
+  Lines 86-118: If SelectedIngredientIds provided (customizable items like bowls):
+    - Deduplicate ingredient IDs
     - Fetch available ingredients from DB
     - Validate each ingredient exists and is active
     - For each selected ingredient:
@@ -260,63 +268,64 @@ Lines 34-112: Process each item in request.Items
       - Set QuantityUsed = ingredient.QuantityUsed
     - Add ingredientPrice to running total
 
-  Lines 103-107: Validation
+  Lines 120-125: Validation
     - Must have either variant OR ingredients (not neither)
     - Return 400 if both missing
 
-  Lines 109-111: Calculate prices
+  Lines 127-129: Calculate prices
     - unitPrice = variantPrice + ingredientPrice
     - totalPrice = unitPrice * quantity
     - Add to order.Items
 
-Lines 114-117: Calculate order totals
+Lines 132-135: Calculate order totals
   - subtotal = sum of all item totalPrices
   - tax = round(subtotal * taxRate, 2)
   - total = subtotal + tax
 
-Lines 120-127: STRIPE PAYMENT (if PaymentMethod == Card)
+Lines 138-148: STRIPE PAYMENT (if PaymentMethod == Card)
+  - Check stripe.IsConfigured — return 422 if Stripe is not configured
   - Call stripeService.CreatePaymentIntentAsync(order.Total)
   - This creates a PaymentIntent on Stripe's servers
   - Store the PaymentIntent ID on the order (StripePaymentId)
   - Capture the clientSecret for frontend
 
-Lines 129-130: Save order to database
+Lines 150-151: Save order to database
 
-Lines 133-137: Re-fetch order with all navigation properties
+Lines 154-158: Re-fetch order with all navigation properties
   - Include Items -> MenuItems, Variants
   - Include Items -> Ingredients -> Ingredient
 
-Lines 141-146: If InStore payment
+Lines 164-167: If InStore payment
   - Broadcast to kitchen immediately via SignalR
   - No waiting for payment — food prep starts now
 
-Lines 148-150: Return 201 Created
+Lines 169-171: Return 201 Created
   - Body: CreateOrderResponse { Order, ClientSecret, StripePublishableKey }
   - Card orders: clientSecret is set (frontend needs it for Stripe Elements)
   - InStore orders: clientSecret is null
 
-Line 151: Apply ValidationFilter<CreateOrderRequest>
+Line 172: Apply ValidationFilter<CreateOrderRequest>
 ```
 
 ### POST /api/orders/{id}/confirm-payment — Confirm Card Payment
 
-**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 154-200)
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 175-221)
 
 Called by the frontend after `stripe.confirmPayment()` succeeds on the client side.
 
 ```
-Lines 157-161: Fetch order with all navigation properties
-Lines 163-167: Validate:
-  - Order exists
-  - Not already marked as Paid
-  - Has a StripePaymentId
+Lines 178-182: Fetch order with all navigation properties
+Lines 184-188: Validate:
+  - Order exists (404 if not)
+  - Not already marked as Paid (returns current DTO if so)
+  - Has a StripePaymentId (400 if not)
 
-Lines 169-170: Fetch PaymentIntent from Stripe API
+Lines 190: Fetch PaymentIntent from Stripe API
   - Uses stripeService.GetPaymentIntentAsync(order.StripePaymentId)
 
-Lines 171-190: If PaymentIntent status == "succeeded":
+Lines 192-211: If PaymentIntent status == "succeeded":
   - Set order.PaymentStatus = Paid
-  Lines 176-181: Extract card details from Stripe charge:
+  Lines 197-202: Extract card details from Stripe charge:
     - Get latest charge ID from PaymentIntent
     - Fetch charge details
     - Set order.CardBrand (e.g. "visa")
@@ -326,16 +335,17 @@ Lines 171-190: If PaymentIntent status == "succeeded":
   - Broadcast OrderCreated to "kitchen" SignalR group
   - Return OrderDto
 
-Lines 192-197: If status == "requires_payment_method" or "canceled":
+Lines 213-218: If status == "requires_payment_method" or "canceled":
   - Set order.PaymentStatus = Failed
+  - Update order.UpdatedAt
   - Save to database
 
-Line 199: Return current OrderDto regardless of outcome
+Line 220: Return current OrderDto regardless of outcome
 ```
 
 ### GET /api/orders/{id} — Get Order by ID
 
-**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 203-213)
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 224-234)
 
 - Fetch order with full navigation (Items, Variants, Ingredients)
 - Return 404 if not found
@@ -343,7 +353,7 @@ Line 199: Return current OrderDto regardless of outcome
 
 ### GET /api/orders/active — Get Active Orders (Kitchen)
 
-**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 216-227)
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 237-248)
 
 - **Requires "Staff" authorization**
 - Filter: Status != Completed AND Status != Cancelled
@@ -351,16 +361,46 @@ Line 199: Return current OrderDto regardless of outcome
 - Include all navigation properties
 - Return List<OrderDto>
 
-### PATCH /api/orders/{id}/status — Update Order Status
+### GET /api/orders/today-revenue — Get Today's Revenue
 
-**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 230-248)
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 251-260)
 
 - **Requires "Staff" authorization**
-- Fetch order, update Status field, save
-- Broadcast to SignalR:
+- Sums `Total` of all orders where `Status == Completed` and `CreatedAt >= today (UTC)`
+- Returns `{ total: decimal }`
+
+### PATCH /api/orders/{id}/status — Update Order Status
+
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 263-308)
+
+- **Requires "Staff" authorization**
+- Fetch order with Items (including Ingredients and Variant → RecipeIngredients)
+- Update Status field, save
+
+**Inventory decrement on Completed** (Lines 279-287):
+- On transition to `Completed` (guarded against double-decrement):
+  - Calls `DecrementInventoryAsync()` — decrements ingredient stock quantities
+  - Creates `InventoryLog` entries with `OrderDecrement` change type for audit trail
+  - Checks if any active ingredients are now below their `LowStockThreshold`
+
+**SignalR broadcasts** (Lines 296-304):
+- Broadcast `OrderStatusChanged` to:
   - `"kitchen"` group: all staff see the status change
   - `"order-{id}"` group: customer watching their order sees the change
+- If low stock detected: broadcast `LowStockAlert` to `"kitchen"` group with `{ lowStockCount }`
+
+- Returns `{ id, status }` (not a full OrderDto)
 - Apply ValidationFilter<UpdateOrderStatusRequest>
+
+### DecrementInventoryAsync (Private Helper)
+
+**File:** `src/Server/EndPoints/OrderEndpoints.cs` (Lines 311-367)
+
+Aggregates total ingredient usage across all order items:
+- **Customizable items (bowls):** decrement from `OrderItemIngredient.QuantityUsed * Quantity`
+- **Fixed items (drinks):** decrement from `RecipeIngredient.Quantity * Quantity` via variant
+- Fetches ingredients from DB, decrements `StockQuantity`
+- Creates `InventoryLog` entry per ingredient with `Notes = "Order #{orderNumber}"`
 
 ---
 
@@ -368,16 +408,27 @@ Line 199: Return current OrderDto regardless of outcome
 
 **File:** `src/Server/Services/StripeService.cs`
 
-### Constructor (Lines 9-17)
+### Properties
+
+```csharp
+// IsConfigured (Line 9): Boolean — true only if both SecretKey and PublishableKey are present
+// PublishableKey (Line 24): Returns publishable key, throws if not configured
+```
+
+### Constructor (Lines 11-22)
 
 ```csharp
 // Reads from configuration:
 //   Stripe:SecretKey   → sk_test_... or sk_live_...
 //   Stripe:PublishableKey → pk_test_... or pk_live_...
-// Sets StripeConfiguration.ApiKey globally for Stripe SDK
+// If BOTH keys are present:
+//   Sets IsConfigured = true
+//   Sets StripeConfiguration.ApiKey globally for Stripe SDK
+// If either key is missing:
+//   Sets IsConfigured = false — Stripe calls will be blocked at the endpoint level
 ```
 
-### CreatePaymentIntentAsync (Lines 21-36)
+### CreatePaymentIntentAsync (Lines 27-42)
 
 ```csharp
 // Parameters: amount (decimal in dollars), description (string?)
@@ -396,7 +447,7 @@ Line 199: Return current OrderDto regardless of outcome
 //   - .Status = "requires_payment_method"
 ```
 
-### GetPaymentIntentAsync (Lines 38-42)
+### GetPaymentIntentAsync (Lines 44-48)
 
 ```csharp
 // Fetches a PaymentIntent by ID from Stripe
@@ -404,7 +455,7 @@ Line 199: Return current OrderDto regardless of outcome
 // Returns updated status: "succeeded", "requires_payment_method", "canceled"
 ```
 
-### GetChargeAsync (Lines 44-48)
+### GetChargeAsync (Lines 50-54)
 
 ```csharp
 // Fetches Charge details from Stripe
@@ -517,6 +568,10 @@ OrderCreated (broadcast to "kitchen"):
 OrderStatusChanged (broadcast to "kitchen" + "order-{id}"):
   - Sent when staff advances order status
   - Both kitchen display AND customer see the update
+
+LowStockAlert (broadcast to "kitchen"):
+  - Sent when an order is completed and any ingredient drops below its low stock threshold
+  - Payload: { lowStockCount } — number of ingredients currently below threshold
 ```
 
 ### Frontend Hub Connection
@@ -980,22 +1035,22 @@ Note: The Stripe publishable key is **not** stored in the frontend `.env`. It's 
 
 ## Test Suite Documentation
 
-The project has **51 test files** with **500+ test cases** across 5 testing frameworks.
+The project has **65+ test files** with **500+ test cases** across 5 testing frameworks.
 
 ### Overview by Category
 
 | Category | Files | Framework | Coverage Area |
 |----------|-------|-----------|---------------|
-| Next.js Components | 8 | Vitest + React Testing Library | UI rendering, interactions |
-| Next.js Utilities | 6 | Vitest | Helpers, formatters, math |
+| Next.js Components | 18 | Vitest + React Testing Library | UI rendering, interactions |
+| Next.js Utilities | 9 | Vitest | Helpers, formatters, math, admin API |
 | Next.js Pages | 2 | Vitest | Checkout, cart workflows |
 | Next.js State | 2 | Vitest | Auth and cart contexts |
-| .NET Endpoints | 11 | xUnit | REST API CRUD, auth, validation |
+| .NET Endpoints | 15 | xUnit | REST API CRUD, auth, validation |
 | .NET Database | 1 | xUnit | Seeds, sequences, concurrency |
 | .NET Services | 2 | xUnit | JWT tokens, Stripe config |
-| .NET SignalR | 1 | xUnit | Real-time order updates |
+| .NET SignalR | 2 | xUnit | Real-time order updates, low stock alerts |
 | Blazor Components | 3 | bUnit | Cart drawer, cart service |
-| Shared Validators | 8 | xUnit + FluentValidation | DTO input validation |
+| Shared Validators | 7 | xUnit + FluentValidation | DTO input validation |
 | Shared Helpers | 1 | xUnit | Unit conversions |
 | Print Agent | 2 | xUnit | Receipt PDF generation |
 | E2E | 4 | Playwright | Full browser workflows |
@@ -1071,6 +1126,50 @@ Tests admin order card:
 - Displays payment method badge
 - Lists ingredients with quantities
 
+#### `settings-page.test.tsx`
+
+Tests admin settings page rendering and interactions.
+
+#### `home-page.test.tsx`
+
+Tests customer home page rendering.
+
+#### `orders-page.test.tsx`
+
+Tests admin orders page rendering and interactions.
+
+#### `admin-login.test.tsx`
+
+Tests admin login page rendering and form submission.
+
+#### `admin-dashboard.test.tsx`
+
+Tests admin dashboard page rendering.
+
+#### `menu-item-form-sheet.test.tsx`
+
+Tests menu item form sheet component for creating/editing menu items.
+
+#### `menu-item-list.test.tsx`
+
+Tests menu item list component rendering and interactions.
+
+#### `ingredients-page.test.tsx`
+
+Tests admin ingredients page rendering and CRUD interactions.
+
+#### `ingredient-history.test.tsx`
+
+Tests ingredient history/audit trail display.
+
+#### `restock-page.test.tsx`
+
+Tests admin restock page rendering and interactions.
+
+#### `order-status-page.test.tsx`
+
+Tests customer order status tracking page.
+
 ---
 
 ### Next.js Utility Tests
@@ -1114,6 +1213,18 @@ Tests unit measurement formatting:
 Tests ingredient-to-emoji mapping:
 - Returns correct emoji for known ingredients
 - Falls back for unknown ingredients
+
+#### `resolve-image-url.test.ts`
+
+Tests image URL resolution utility.
+
+#### `unit-conversions.test.ts`
+
+Tests unit conversion utilities for ingredient measurements.
+
+#### `admin-api.test.ts`
+
+Tests admin API client utility functions.
 
 ---
 
@@ -1291,6 +1402,30 @@ Tests recipe ingredient management:
 - Update recipe ingredient
 - Hard-delete recipe ingredient
 
+#### `StoreTokenEndpointTests.cs`
+
+Tests store token management for QR code in-store ordering:
+- Generate store token (Staff only)
+- Token validation and expiration
+
+#### `RestockEndpointTests.cs`
+
+Tests inventory restock endpoints:
+- Restock ingredient quantities
+- Audit trail creation for restocks
+
+#### `MenuItemImageTests.cs`
+
+Tests menu item image upload and retrieval.
+
+#### `CanOrderAuthorizationTests.cs`
+
+Tests the custom "CanOrder" authorization policy:
+- Authenticated users can place orders
+- Valid store token allows guest ordering
+- Invalid/expired tokens are rejected
+- Missing token and no auth returns 401
+
 ---
 
 ### .NET Database Tests
@@ -1338,6 +1473,12 @@ Tests real-time order notifications:
 - Isolation: order-A group doesn't receive order-B updates
 - Join/leave kitchen group works
 - Multiple kitchen clients all receive broadcasts
+
+#### `LowStockAlertTests.cs`
+
+Tests low stock alert SignalR broadcasts:
+- Kitchen group receives "LowStockAlert" when order completion triggers low stock
+- Alert includes count of ingredients below threshold
 
 ---
 

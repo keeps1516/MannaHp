@@ -11,7 +11,46 @@
       "Bash(pkill:*)",
       "Bash(cmd.exe:*)",
       "mcp__plugin_playwright_playwright__browser_install",
-      "mcp__plugin_playwright_playwright__browser_navigate"
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "Bash(wc:*)",
+      "Bash(git pull:*)",
+      "Bash(/home/keeps/.dotnet/dotnet build:*)",
+      "Bash(pg_isready:*)",
+      "Bash(/home/keeps/.dotnet/dotnet restore:*)",
+      "Bash(/home/keeps/.dotnet/dotnet test:*)",
+      "Bash(systemctl is-active:*)",
+      "Bash(npx vitest:*)",
+      "Bash(apt list --installed)",
+      "Bash(node:*)",
+      "Bash(psql:*)",
+      "Bash(PGPASSWORD=devpassword123 psql:*)",
+      "Bash(export:*)",
+      "Bash($HOME/.dotnet/dotnet test:*)",
+      "mcp__next-devtools__browser_eval",
+      "Bash(sudo ss:*)",
+      "Bash(docker run:*)",
+      "Bash(git commit:*)",
+      "Bash(git diff:*)",
+      "Bash(find:*)",
+      "Bash(docker compose:*)",
+      "Bash(ls -la /home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/admin/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(cat \"/home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/admin/\\(dashboard\\)/page.tsx\")",
+      "Bash(cat \"/home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/admin/\\(dashboard\\)/orders/page.tsx\")",
+      "Bash(cat \"/home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/admin/\\(dashboard\\)/settings/page.tsx\")",
+      "Bash(npx next build)",
+      "Bash(npx jest --passWithNoTests)",
+      "Bash(ls -la \"/home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/\\(customer\\)/checkout/\")",
+      "Bash(cat /home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/\\\\\\(customer\\\\\\)/checkout/page.tsx)",
+      "Bash(cat /home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/\\\\\\(customer\\\\\\)/order/\\\\[id\\\\]/page.tsx)",
+      "Bash(cat /home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/admin/\\\\\\(dashboard\\\\\\)/orders/page.tsx)",
+      "Bash(cat /home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/admin/\\\\\\(dashboard\\\\\\)/submit-order/page.tsx)",
+      "Bash(ls -la /home/keeps/Dev/MannahHp/MannaHp/src/next-client/src/app/\\\\\\(customer\\\\\\)/checkout/)",
+      "Bash(curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor 2>/dev/null | sudo tee /usr/share/keyrings/stripe.gpg > /dev/null && echo \"deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main\" | sudo tee /etc/apt/sources.list.d/stripe.list > /dev/null && sudo apt update -qq 2>&1 | tail -3 && sudo apt install -y stripe 2>&1 | tail -5)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn",
+    "next-devtools"
+  ]
 }

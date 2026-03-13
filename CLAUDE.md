@@ -10,16 +10,16 @@ A full-stack ordering system for Manna — a coffee and burrito bowl restaurant.
 
 | Layer | Technology |
 |---|---|
-| Frontend | Blazor WASM (PWA) |
+| Frontend | Next.js (React) |
 | API | ASP.NET Core Minimal APIs |
 | Auth | ASP.NET Core Identity + Google OAuth |
 | Real-time | SignalR |
-| Validation | FluentValidation (shared between client and server) |
+| Validation | FluentValidation (server) |
 | ORM | EF Core |
 | Database | PostgreSQL |
 | Payments | Stripe (saved cards via Customer objects) |
 | PDF / Printing | QuestPDF + local Worker Service |
-| UI Components | MudBlazor |
+| UI Components | shadcn/ui + Tailwind CSS |
 | Hosting | Docker Compose (self-hosted) |
 | Hangfire | Docker Compose (self-hosted) |
 
@@ -29,12 +29,12 @@ A full-stack ordering system for Manna — a coffee and burrito bowl restaurant.
 
 ```
 /src
-  /Shared              ← Models, DTOs, Validators (referenced by both Client and Server)
+  /Shared              ← Models, DTOs, Validators (server-side)
   /Server              ← ASP.NET Core API, EF Core, SignalR Hub, Stripe, Identity
-  /Client              ← Blazor WASM (customer, kitchen, admin views)
+  /next-client         ← Next.js frontend (customer, kitchen, admin views)
   /PrintAgent          ← Worker Service (QuestPDF, polls DB, prints receipts)
 
-docker-compose.yml     ← PostgreSQL + Server + Client + PrintAgent
+docker-compose.yml     ← PostgreSQL + Server + Next.js Client + PrintAgent
 ```
 
 ---
@@ -43,13 +43,13 @@ docker-compose.yml     ← PostgreSQL + Server + Client + PrintAgent
 
 ### 1. Customer Ordering
 
-- Blazor WASM served as a PWA — works on mobile browsers, no app store needed
+- Next.js frontend served as a web app — works on mobile browsers, no app store needed
 - Customers can create an account via Google OAuth or order as a guest (in-store QR code)
 - Menu displays items with descriptions and prices (calculated from ingredient costs + owner-defined margin)
 
 ### 2. Payment — Stripe
 
-- **Stripe Elements** embedded in the Blazor app for card entry
+- **Stripe Elements** embedded in the Next.js app for card entry
 - **Stripe Customer objects** store payment methods — returning customers don't re-enter card info
 - When a user signs in for the first time, a Stripe Customer is created and linked to their app account
 - PCI compliance is handled by Stripe — the app never touches raw card numbers
@@ -234,8 +234,8 @@ services:
       - Auth__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
 
   frontend:
-    build: ./src/Client
-    # Nginx serving the Blazor WASM build
+    build: ./src/next-client
+    # Next.js frontend
 
   reverse-proxy:
     image: caddy
@@ -283,7 +283,7 @@ volumes:
 
 | Technology | URL |
 |---|---|
-| Blazor WASM | https://learn.microsoft.com/en-us/aspnet/core/blazor/ |
+| Next.js | https://nextjs.org/docs |
 | ASP.NET Core Minimal APIs | https://learn.microsoft.com/en-us/aspnet/core/fundamentals/minimal-apis |
 | ASP.NET Core Identity | https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity |
 | Google OAuth (ASP.NET) | https://learn.microsoft.com/en-us/aspnet/core/security/authentication/social/google-logins |
@@ -299,7 +299,7 @@ volumes:
 | Stripe Customer / Saved Cards | https://docs.stripe.com/payments/save-and-reuse |
 | Stripe Webhooks | https://docs.stripe.com/webhooks |
 | QuestPDF | https://www.questpdf.com/documentation/getting-started.html |
-| MudBlazor | https://mudblazor.com/docs/overview |
+| shadcn/ui | https://ui.shadcn.com/docs |
 | Docker Compose | https://docs.docker.com/compose/ |
 | Caddy (reverse proxy) | https://caddyserver.com/docs/ |
 | HangFire Background Processing (reverse proxy) | https://github.com/hangfire-postgres/Hangfire.PostgreSql |

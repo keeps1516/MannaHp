@@ -168,9 +168,8 @@ docker compose exec api printenv ConnectionStrings__DefaultConnection
 
 ### .NET API (`manna-api`)
 
-- Uses a **`Docker` build configuration** that excludes Blazor/MudBlazor
-- Blazor code is wrapped in `#if !DOCKER` preprocessor directives in `Program.cs`
-- Local development (`dotnet run`) still uses Debug config with Blazor included
+- Uses a **`Docker` build configuration** for the .NET API
+- The frontend is a separate Next.js container
 - Dockerfile: `src/Server/Dockerfile` (build context is repo root)
 - Auto-runs EF Core migrations on startup
 - Seeds the owner account on first boot

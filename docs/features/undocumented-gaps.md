@@ -263,7 +263,7 @@ This document captures features and gaps **not covered** by the existing [featur
 
 ### G13: Offline / PWA Caching
 
-**Arch doc reference:** "Blazor WASM served as a PWA" (note: frontend is now Next.js, not Blazor)
+**Arch doc reference:** Originally described as a PWA in the architecture doc
 
 **Why:** The architecture doc describes the app as a PWA, but there's no service worker or offline caching. The app is completely unusable without internet.
 
