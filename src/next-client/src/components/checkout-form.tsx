@@ -42,6 +42,13 @@ export function CheckoutForm({
       });
 
       if (error) {
+        // If the PaymentIntent already succeeded (double-click, page refresh),
+        // treat it as a success and let the server verify
+        if (error.code === "payment_intent_unexpected_state") {
+          await api.confirmPayment(orderId);
+          onSuccess();
+          return;
+        }
         onError(error.message ?? "Payment failed. Please try again.");
         setProcessing(false);
         return;
