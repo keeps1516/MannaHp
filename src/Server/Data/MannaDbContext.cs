@@ -30,6 +30,8 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 	public DbSet<AppSettings> AppSettings => Set<AppSettings>();
 	public DbSet<InventoryLog> InventoryLogs => Set<InventoryLog>();
 	public DbSet<StoreToken> StoreTokens => Set<StoreToken>();
+	public DbSet<Refund> Refunds => Set<Refund>();
+	public DbSet<RefundItem> RefundItems => Set<RefundItem>();
 
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -108,6 +110,7 @@ public class MannaDbContext : IdentityDbContext<AppUser>
             e.Property(m => m.IsCustomizable).HasDefaultValue(false);
             e.Property(m => m.Active).HasDefaultValue(true);
             e.Property(m => m.SortOrder).HasDefaultValue(0);
+            e.Property(m => m.RestockPolicy).HasDefaultValue(RestockPolicy.NonReturnable);
             e.Property(m => m.CreatedAt).HasDefaultValueSql("now()");
 
             e.HasOne<Category>()
@@ -266,6 +269,40 @@ public class MannaDbContext : IdentityDbContext<AppUser>
 			e.HasOne(l => l.Ingredient)
 				.WithMany()
 				.HasForeignKey(l => l.IngredientId);
+		});
+
+		// ── Refund ──
+		modelBuilder.Entity<Refund>(e =>
+		{
+			e.ToTable("refunds");
+			e.HasKey(r => r.Id);
+			e.Property(r => r.Amount).HasPrecision(10, 2);
+			e.Property(r => r.TaxAmount).HasPrecision(10, 2);
+			e.Property(r => r.Reason).HasMaxLength(500).IsRequired();
+			e.Property(r => r.StripeRefundId).HasMaxLength(255);
+			e.Property(r => r.CreatedBy).HasMaxLength(450).IsRequired();
+			e.Property(r => r.CreatedAt).HasDefaultValueSql("now()");
+
+			e.HasOne(r => r.Order)
+				.WithMany(o => o.Refunds)
+				.HasForeignKey(r => r.OrderId);
+		});
+
+		// ── RefundItem ──
+		modelBuilder.Entity<RefundItem>(e =>
+		{
+			e.ToTable("refund_items");
+			e.HasKey(ri => ri.Id);
+			e.Property(ri => ri.Amount).HasPrecision(10, 2);
+			e.Property(ri => ri.Restocked).HasDefaultValue(false);
+
+			e.HasOne(ri => ri.Refund)
+				.WithMany(r => r.Items)
+				.HasForeignKey(ri => ri.RefundId);
+
+			e.HasOne(ri => ri.OrderItem)
+				.WithMany()
+				.HasForeignKey(ri => ri.OrderItemId);
 		});
 
 		// ── StoreToken ──

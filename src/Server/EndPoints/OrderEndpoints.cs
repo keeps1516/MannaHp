@@ -155,6 +155,7 @@ public static class OrderEndpoints
                 .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.Items).ThenInclude(oi => oi.Variant)
                 .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Refunds)
                 .FirstAsync(o => o.Id == order.Id);
 
             var dto = MapToDto(saved);
@@ -178,7 +179,8 @@ public static class OrderEndpoints
             var order = await db.Orders
                 .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.Items).ThenInclude(oi => oi.Variant)
-                .Include(o => o.Items).ThenInclude(oia => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Refunds)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order is null) return Results.NotFound();
@@ -227,6 +229,7 @@ public static class OrderEndpoints
                 .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.Items).ThenInclude(oi => oi.Variant)
                 .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Refunds)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order is null) return Results.NotFound();
@@ -242,6 +245,7 @@ public static class OrderEndpoints
                 .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.Items).ThenInclude(oi => oi.Variant)
                 .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Refunds)
                 .ToListAsync();
 
             return Results.Ok(orders.Select(MapToDto).ToList());
@@ -256,7 +260,185 @@ public static class OrderEndpoints
                     && o.Status == OrderStatus.Completed)
                 .SumAsync(o => o.Total);
 
-            return Results.Ok(new { total });
+            var refunded = await db.Refunds
+                .Where(r => r.CreatedAt >= todayUtc)
+                .SumAsync(r => r.Amount + r.TaxAmount);
+
+            return Results.Ok(new { total = total - refunded });
+        }).RequireAuthorization("Staff");
+
+        // PATCH mark in-store order as paid — Staff only
+        group.MapPatch("/{id:guid}/mark-paid", async (Guid id, MannaDbContext db,
+            IHubContext<OrderHub> hub) =>
+        {
+            var order = await db.Orders.FindAsync(id);
+            if (order is null) return Results.NotFound();
+
+            if (order.PaymentMethod != PaymentMethod.InStore)
+                return Results.BadRequest(new { error = "Only in-store orders can be marked as paid" });
+            if (order.PaymentStatus != PaymentStatus.Pending)
+                return Results.BadRequest(new { error = "Order payment is not pending" });
+
+            order.PaymentStatus = PaymentStatus.Paid;
+            order.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            var update = new { order.Id, order.PaymentStatus };
+            await hub.Clients.Group("kitchen").SendAsync("OrderPaymentUpdated", update);
+            await hub.Clients.Group($"order-{id}").SendAsync("OrderPaymentUpdated", update);
+
+            return Results.Ok(update);
+        }).RequireAuthorization("Staff");
+
+        // POST cancel order — Staff only
+        group.MapPost("/{id:guid}/cancel", async (Guid id, CancelOrderRequest req,
+            MannaDbContext db, IHubContext<OrderHub> hub) =>
+        {
+            var order = await db.Orders
+                .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients)
+                .Include(o => o.Items).ThenInclude(oi => oi.Variant)
+                    .ThenInclude(v => v!.RecipeIngredients)
+                .FirstOrDefaultAsync(o => o.Id == id);
+            if (order is null) return Results.NotFound();
+
+            if (order.Status == OrderStatus.Cancelled)
+                return Results.BadRequest(new { error = "Order is already cancelled" });
+
+            var wasCompleted = order.Status == OrderStatus.Completed;
+            order.Status = OrderStatus.Cancelled;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            // Restock returnable items if order was completed (inventory was decremented)
+            if (wasCompleted && req.RestockItems?.Count > 0)
+            {
+                await RestockItemsAsync(db, order, req.RestockItems
+                    .Where(ri => ri.Restock)
+                    .Select(ri => ri.OrderItemId)
+                    .ToHashSet());
+            }
+
+            await db.SaveChangesAsync();
+
+            var update = new { order.Id, Status = order.Status };
+            await hub.Clients.Group("kitchen").SendAsync("OrderCancelled", update);
+            await hub.Clients.Group($"order-{id}").SendAsync("OrderCancelled", update);
+
+            return Results.Ok(update);
+        }).AddEndpointFilter<ValidationFilter<CancelOrderRequest>>()
+          .RequireAuthorization("Staff");
+
+        // POST refund order items — Staff only
+        group.MapPost("/{id:guid}/refund", async (Guid id, CreateRefundRequest req,
+            MannaDbContext db, IHubContext<OrderHub> hub, HttpContext httpContext) =>
+        {
+            var order = await db.Orders
+                .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients)
+                .Include(o => o.Items).ThenInclude(oi => oi.Variant)
+                    .ThenInclude(v => v!.RecipeIngredients)
+                .Include(o => o.Refunds).ThenInclude(r => r.Items)
+                .FirstOrDefaultAsync(o => o.Id == id);
+            if (order is null) return Results.NotFound();
+
+            // Build set of already-refunded order item IDs
+            var alreadyRefundedItemIds = order.Refunds
+                .SelectMany(r => r.Items)
+                .Select(ri => ri.OrderItemId)
+                .ToHashSet();
+
+            // Validate requested items exist on the order and aren't already refunded
+            var requestedItemIds = req.Items.Select(i => i.OrderItemId).ToHashSet();
+            var orderItemMap = order.Items.ToDictionary(oi => oi.Id);
+            foreach (var itemReq in req.Items)
+            {
+                if (!orderItemMap.ContainsKey(itemReq.OrderItemId))
+                    return Results.BadRequest(new { error = $"Order item {itemReq.OrderItemId} not found on this order" });
+                if (alreadyRefundedItemIds.Contains(itemReq.OrderItemId))
+                    return Results.BadRequest(new { error = $"Order item {itemReq.OrderItemId} has already been refunded" });
+            }
+
+            // Calculate refund amount from selected items
+            decimal refundSubtotal = req.Items
+                .Sum(i => orderItemMap[i.OrderItemId].TotalPrice);
+            decimal refundTax = order.Subtotal > 0
+                ? Math.Round(refundSubtotal / order.Subtotal * order.Tax, 2)
+                : 0;
+
+            var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+
+            var refund = new Refund
+            {
+                OrderId = order.Id,
+                Amount = refundSubtotal,
+                TaxAmount = refundTax,
+                Reason = req.Reason,
+                CreatedBy = userId,
+            };
+
+            var restockItemIds = req.Items
+                .Where(i => i.Restock)
+                .Select(i => i.OrderItemId)
+                .ToHashSet();
+
+            foreach (var itemReq in req.Items)
+            {
+                var orderItem = orderItemMap[itemReq.OrderItemId];
+                var isReturnable = orderItem.MenuItem?.RestockPolicy == RestockPolicy.Returnable;
+                var shouldRestock = isReturnable && itemReq.Restock && order.Status == OrderStatus.Completed;
+
+                refund.Items.Add(new RefundItem
+                {
+                    OrderItemId = itemReq.OrderItemId,
+                    Amount = orderItem.TotalPrice,
+                    Restocked = shouldRestock,
+                });
+            }
+
+            db.Refunds.Add(refund);
+
+            // Restock returnable items if order was completed
+            if (order.Status == OrderStatus.Completed && restockItemIds.Count > 0)
+            {
+                await RestockItemsAsync(db, order, restockItemIds);
+            }
+
+            // Update payment status: Refunded if full order is now refunded
+            var totalRefundedSoFar = order.Refunds.Sum(r => r.Amount + r.TaxAmount) + refundSubtotal + refundTax;
+            if (totalRefundedSoFar >= order.Total)
+                order.PaymentStatus = PaymentStatus.Refunded;
+
+            order.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            // Re-fetch refund with navigation for DTO
+            var savedRefund = await db.Refunds
+                .Include(r => r.Items).ThenInclude(ri => ri.OrderItem).ThenInclude(oi => oi!.MenuItem)
+                .FirstAsync(r => r.Id == refund.Id);
+
+            var refundDto = MapRefundToDto(savedRefund);
+
+            var broadcast = new { order.Id, RefundAmount = refundSubtotal + refundTax, order.PaymentStatus };
+            await hub.Clients.Group("kitchen").SendAsync("OrderRefunded", broadcast);
+            await hub.Clients.Group($"order-{id}").SendAsync("OrderRefunded", broadcast);
+
+            return Results.Created($"/api/orders/{id}/refunds", refundDto);
+        }).AddEndpointFilter<ValidationFilter<CreateRefundRequest>>()
+          .RequireAuthorization("Staff");
+
+        // GET refund history for an order — Staff only
+        group.MapGet("/{id:guid}/refunds", async (Guid id, MannaDbContext db) =>
+        {
+            var orderExists = await db.Orders.AnyAsync(o => o.Id == id);
+            if (!orderExists) return Results.NotFound();
+
+            var refunds = await db.Refunds
+                .Where(r => r.OrderId == id)
+                .Include(r => r.Items).ThenInclude(ri => ri.OrderItem).ThenInclude(oi => oi!.MenuItem)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            return Results.Ok(refunds.Select(MapRefundToDto).ToList());
         }).RequireAuthorization("Staff");
 
         // PATCH status (kitchen staff) — Staff only
@@ -366,7 +548,67 @@ public static class OrderEndpoints
         }
     }
 
-    private static OrderDto MapToDto(Order order) => new(
+    private static async Task RestockItemsAsync(MannaDbContext db, Order order, HashSet<Guid> restockOrderItemIds)
+    {
+        var increments = new Dictionary<Guid, decimal>();
+
+        foreach (var item in order.Items)
+        {
+            if (!restockOrderItemIds.Contains(item.Id)) continue;
+            if (item.MenuItem?.RestockPolicy != RestockPolicy.Returnable) continue;
+
+            // Customizable items: restock from order_item_ingredients
+            if (item.Ingredients.Count > 0)
+            {
+                foreach (var oii in item.Ingredients)
+                {
+                    var total = oii.QuantityUsed * item.Quantity;
+                    if (increments.ContainsKey(oii.IngredientId))
+                        increments[oii.IngredientId] += total;
+                    else
+                        increments[oii.IngredientId] = total;
+                }
+            }
+            // Fixed items: restock from recipe_ingredients via variant
+            else if (item.Variant?.RecipeIngredients is { Count: > 0 } recipe)
+            {
+                foreach (var ri in recipe)
+                {
+                    var total = ri.Quantity * item.Quantity;
+                    if (increments.ContainsKey(ri.IngredientId))
+                        increments[ri.IngredientId] += total;
+                    else
+                        increments[ri.IngredientId] = total;
+                }
+            }
+        }
+
+        if (increments.Count == 0) return;
+
+        var ingredientIds = increments.Keys.ToList();
+        var ingredients = await db.Ingredients
+            .Where(i => ingredientIds.Contains(i.Id))
+            .ToListAsync();
+
+        foreach (var ingredient in ingredients)
+        {
+            if (increments.TryGetValue(ingredient.Id, out var amount))
+            {
+                ingredient.StockQuantity += amount;
+
+                db.InventoryLogs.Add(new InventoryLog
+                {
+                    IngredientId = ingredient.Id,
+                    ChangeType = InventoryChangeType.OrderRestock,
+                    QuantityChange = amount,
+                    NewStockQuantity = ingredient.StockQuantity,
+                    Notes = $"Restock from order #{order.OrderNumber}",
+                });
+            }
+        }
+    }
+
+    internal static OrderDto MapToDto(Order order) => new(
         order.Id,
         order.OrderNumber,
         order.Status,
@@ -376,6 +618,7 @@ public static class OrderEndpoints
         order.TaxRate,
         order.Tax,
         order.Total,
+        order.Refunds.Sum(r => r.Amount + r.TaxAmount),
         order.Notes,
         order.CreatedAt,
         order.Items.Select(oi => new OrderItemDto(
@@ -386,6 +629,7 @@ public static class OrderEndpoints
             oi.UnitPrice,
             oi.TotalPrice,
             oi.Notes,
+            oi.MenuItem?.RestockPolicy ?? RestockPolicy.NonReturnable,
             oi.Ingredients.Count > 0
                 ? oi.Ingredients.Select(oii => new OrderItemIngredientDto(
                     oii.IngredientId,
@@ -394,6 +638,24 @@ public static class OrderEndpoints
                     oii.Ingredient?.Unit ?? UnitOfMeasure.Each,
                     oii.PriceCharged)).ToList()
                 : null
+        )).ToList()
+    );
+
+    internal static RefundDto MapRefundToDto(Refund refund) => new(
+        refund.Id,
+        refund.OrderId,
+        refund.Amount,
+        refund.TaxAmount,
+        refund.Reason,
+        refund.StripeRefundId,
+        refund.CreatedBy,
+        refund.CreatedAt,
+        refund.Items.Select(ri => new RefundItemDto(
+            ri.Id,
+            ri.OrderItemId,
+            ri.OrderItem?.MenuItem?.Name ?? "",
+            ri.Amount,
+            ri.Restocked
         )).ToList()
     );
 }

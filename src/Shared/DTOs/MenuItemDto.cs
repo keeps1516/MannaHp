@@ -1,15 +1,18 @@
-﻿namespace MannaHp.Shared.DTOs;
+﻿using MannaHp.Shared.Enums;
+
+namespace MannaHp.Shared.DTOs;
 
 public record MenuItemDto(Guid Id, Guid CategoryId, string Name, string? Description,
 				string? ImageUrl, bool ImageApproximate, bool IsCustomizable, bool Active,
-				int SortOrder, List<MenuItemVariantDto> Variants,
+				int SortOrder, RestockPolicy RestockPolicy, List<MenuItemVariantDto> Variants,
 				List<AvailableIngredientDto>? AvailableIngredients);
 
 public record CreateMenuItemRequest(Guid CategoryId, string Name, string? Description,
-			   string? ImageUrl, bool ImageApproximate, bool IsCustomizable, int SortOrder);
+			   string? ImageUrl, bool ImageApproximate, bool IsCustomizable, int SortOrder,
+			   RestockPolicy RestockPolicy);
 public record UpdateMenuItemRequest(string Name, string? Description, string? ImageUrl,
 				bool ImageApproximate, bool IsCustomizable, Guid CategoryId, int SortOrder,
-				bool Active);
+				bool Active, RestockPolicy RestockPolicy);
 
 public record MenuItemVariantDto(Guid Id, string Name, decimal Price, int SortOrder, bool Active);
 public record CreateVariantRequest(string Name, decimal Price, int SortOrder);

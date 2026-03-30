@@ -4,7 +4,7 @@ import {
   HubConnectionState,
   LogLevel,
 } from "@microsoft/signalr";
-import type { OrderDto, OrderStatus } from "@/types/api";
+import type { OrderDto, OrderStatus, PaymentStatus } from "@/types/api";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5082";

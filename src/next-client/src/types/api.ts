@@ -35,6 +35,7 @@ export interface MenuItemDto {
   isCustomizable: boolean;
   active: boolean;
   sortOrder: number;
+  restockPolicy: RestockPolicy;
   variants: MenuItemVariantDto[];
   availableIngredients: AvailableIngredientDto[] | null;
 }
@@ -95,6 +96,7 @@ export interface OrderDto {
   taxRate: number;
   tax: number;
   total: number;
+  refundedAmount: number;
   notes: string | null;
   createdAt: string;
   items: OrderItemDto[];
@@ -108,6 +110,7 @@ export interface OrderItemDto {
   unitPrice: number;
   totalPrice: number;
   notes: string | null;
+  restockPolicy: RestockPolicy;
   ingredients: OrderItemIngredientDto[] | null;
 }
 
@@ -171,6 +174,7 @@ export interface CreateMenuItemRequest {
   imageApproximate: boolean;
   isCustomizable: boolean;
   sortOrder: number;
+  restockPolicy: RestockPolicy;
 }
 
 export interface UpdateMenuItemRequest {
@@ -182,6 +186,7 @@ export interface UpdateMenuItemRequest {
   categoryId: string;
   sortOrder: number;
   active: boolean;
+  restockPolicy: RestockPolicy;
 }
 
 // ── Variant Mutations ──
@@ -250,6 +255,48 @@ export interface UpdateOrderStatusRequest {
   status: OrderStatus;
 }
 
+// ── Cancel / Refund ──
+
+export interface CancelOrderRequest {
+  reason: string;
+  restockItems: CancelItemRestockRequest[] | null;
+}
+
+export interface CancelItemRestockRequest {
+  orderItemId: string;
+  restock: boolean;
+}
+
+export interface CreateRefundRequest {
+  reason: string;
+  items: RefundItemRequest[];
+}
+
+export interface RefundItemRequest {
+  orderItemId: string;
+  restock: boolean;
+}
+
+export interface RefundDto {
+  id: string;
+  orderId: string;
+  amount: number;
+  taxAmount: number;
+  reason: string;
+  stripeRefundId: string | null;
+  createdBy: string;
+  createdAt: string;
+  items: RefundItemDto[];
+}
+
+export interface RefundItemDto {
+  id: string;
+  orderItemId: string;
+  menuItemName: string;
+  amount: number;
+  restocked: boolean;
+}
+
 // ── Auth Mutations ──
 
 export interface RegisterRequest {
@@ -284,6 +331,12 @@ export enum InventoryChangeType {
   Received = 0,
   OrderDecrement = 1,
   Adjustment = 2,
+  OrderRestock = 3,
+}
+
+export enum RestockPolicy {
+  NonReturnable = 0,
+  Returnable = 1,
 }
 
 export interface InventoryLogDto {

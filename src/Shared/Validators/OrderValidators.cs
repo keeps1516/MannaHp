@@ -37,3 +37,32 @@ public class UpdateOrderStatusRequestValidator : AbstractValidator<UpdateOrderSt
             .IsInEnum().WithMessage("Invalid order status");
     }
 }
+
+public class CancelOrderRequestValidator : AbstractValidator<CancelOrderRequest>
+{
+    public CancelOrderRequestValidator()
+    {
+        RuleFor(x => x.Reason)
+            .NotEmpty().WithMessage("Reason is required")
+            .MaximumLength(500).WithMessage("Reason must not exceed 500 characters");
+    }
+}
+
+public class CreateRefundRequestValidator : AbstractValidator<CreateRefundRequest>
+{
+    public CreateRefundRequestValidator()
+    {
+        RuleFor(x => x.Reason)
+            .NotEmpty().WithMessage("Reason is required")
+            .MaximumLength(500).WithMessage("Reason must not exceed 500 characters");
+
+        RuleFor(x => x.Items)
+            .NotEmpty().WithMessage("At least one item must be selected for refund");
+
+        RuleForEach(x => x.Items).ChildRules(item =>
+        {
+            item.RuleFor(i => i.OrderItemId)
+                .NotEmpty().WithMessage("Order item is required");
+        });
+    }
+}

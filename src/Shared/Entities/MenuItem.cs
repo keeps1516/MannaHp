@@ -1,3 +1,5 @@
+using MannaHp.Shared.Enums;
+
 namespace MannaHp.Shared.Entities;
 
 public class MenuItem
@@ -11,6 +13,7 @@ public class MenuItem
     public bool IsCustomizable { get; set; }
     public bool Active { get; set; }
     public int SortOrder { get; set; }
+    public RestockPolicy RestockPolicy { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<MenuItemVariant> Variants { get; set; } = [];
     public List<MenuItemAvailableIngredient> AvailableIngredients { get; set; } = [];

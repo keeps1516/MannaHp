@@ -26,6 +26,7 @@ public record OrderDto(
 	decimal TaxRate,
 	decimal Tax,
 	decimal Total,
+	decimal RefundedAmount,
 	string? Notes,
 	DateTime CreatedAt,
 	List<OrderItemDto> Items);
@@ -38,6 +39,7 @@ public record OrderItemDto(
 	decimal UnitPrice,
 	decimal TotalPrice,
 	string? Notes,
+	RestockPolicy RestockPolicy,
 	List<OrderItemIngredientDto>? Ingredients);
 
 public record OrderItemIngredientDto(
@@ -55,3 +57,40 @@ public record CreateOrderResponse(
 
 // For status updates (kitchen staff)
 public record UpdateOrderStatusRequest(OrderStatus Status);
+
+// Cancel request
+public record CancelOrderRequest(
+	string Reason,
+	List<CancelItemRestockRequest>? RestockItems);
+
+public record CancelItemRestockRequest(
+	Guid OrderItemId,
+	bool Restock);
+
+// Refund request
+public record CreateRefundRequest(
+	string Reason,
+	List<RefundItemRequest> Items);
+
+public record RefundItemRequest(
+	Guid OrderItemId,
+	bool Restock);
+
+// Refund response
+public record RefundDto(
+	Guid Id,
+	Guid OrderId,
+	decimal Amount,
+	decimal TaxAmount,
+	string Reason,
+	string? StripeRefundId,
+	string CreatedBy,
+	DateTime CreatedAt,
+	List<RefundItemDto> Items);
+
+public record RefundItemDto(
+	Guid Id,
+	Guid OrderItemId,
+	string MenuItemName,
+	decimal Amount,
+	bool Restocked);

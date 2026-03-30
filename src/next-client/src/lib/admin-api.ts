@@ -1,11 +1,13 @@
 import type {
   AuthResponse,
   BulkRestockRequest,
+  CancelOrderRequest,
   CategoryDto,
   CreateAvailableIngredientRequest,
   CreateCategoryRequest,
   CreateIngredientRequest,
   CreateMenuItemRequest,
+  CreateRefundRequest,
   CreateVariantRequest,
   GenerateStoreTokenRequest,
   IngredientDto,
@@ -16,6 +18,7 @@ import type {
   AvailableIngredientDto,
   OrderDto,
   OrderStatus,
+  RefundDto,
   RegisterRequest,
   RestockRequest,
   StoreTokenResponse,
@@ -150,6 +153,30 @@ export const adminApi = {
       token,
       { method: "PATCH", body: JSON.stringify({ status }) }
     ),
+
+  markOrderPaid: (token: string, id: string) =>
+    adminFetch<{ id: string; paymentStatus: number }>(
+      `/api/orders/${id}/mark-paid`,
+      token,
+      { method: "PATCH" }
+    ),
+
+  cancelOrder: (token: string, id: string, req: CancelOrderRequest) =>
+    adminFetch<{ id: string; status: number }>(
+      `/api/orders/${id}/cancel`,
+      token,
+      { method: "POST", body: JSON.stringify(req) }
+    ),
+
+  createRefund: (token: string, id: string, req: CreateRefundRequest) =>
+    adminFetch<RefundDto>(
+      `/api/orders/${id}/refund`,
+      token,
+      { method: "POST", body: JSON.stringify(req) }
+    ),
+
+  getOrderRefunds: (token: string, id: string) =>
+    adminFetch<RefundDto[]>(`/api/orders/${id}/refunds`, token),
 
   // ── Categories ──
   getCategories: (token: string) =>

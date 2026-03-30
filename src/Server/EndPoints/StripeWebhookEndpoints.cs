@@ -45,6 +45,13 @@ public static class StripeWebhookEndpoints
                     await HandlePaymentFailed(paymentIntent, db);
                 }
             }
+            else if (stripeEvent.Type == EventTypes.ChargeRefunded)
+            {
+                if (stripeEvent.Data.Object is Charge charge)
+                {
+                    await HandleChargeRefunded(charge, db, hub);
+                }
+            }
 
             return Results.Ok();
         }).DisableAntiforgery();
@@ -57,6 +64,7 @@ public static class StripeWebhookEndpoints
             .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
             .Include(o => o.Items).ThenInclude(oi => oi.Variant)
             .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+            .Include(o => o.Refunds)
             .FirstOrDefaultAsync(o => o.StripePaymentId == paymentIntent.Id);
 
         if (order is null || order.PaymentStatus == PaymentStatus.Paid) return;
@@ -91,34 +99,84 @@ public static class StripeWebhookEndpoints
         await db.SaveChangesAsync();
     }
 
-    private static OrderDto MapToDto(Order order) => new(
-        order.Id,
-        order.OrderNumber,
-        order.Status,
-        order.PaymentMethod,
-        order.PaymentStatus,
-        order.Subtotal,
-        order.TaxRate,
-        order.Tax,
-        order.Total,
-        order.Notes,
-        order.CreatedAt,
-        order.Items.Select(oi => new OrderItemDto(
-            oi.Id,
-            oi.MenuItem?.Name ?? "",
-            oi.Variant?.Name,
-            oi.Quantity,
-            oi.UnitPrice,
-            oi.TotalPrice,
-            oi.Notes,
-            oi.Ingredients.Count > 0
-                ? oi.Ingredients.Select(oii => new OrderItemIngredientDto(
-                    oii.IngredientId,
-                    oii.Ingredient?.Name ?? "",
-                    oii.QuantityUsed,
-                    oii.Ingredient?.Unit ?? UnitOfMeasure.Each,
-                    oii.PriceCharged)).ToList()
-                : null
-        )).ToList()
-    );
+    private static async Task HandleChargeRefunded(Charge charge, MannaDbContext db, IHubContext<OrderHub> hub)
+    {
+        // Find the order by the PaymentIntent ID on the charge
+        var paymentIntentId = charge.PaymentIntentId;
+        if (string.IsNullOrEmpty(paymentIntentId)) return;
+
+        var order = await db.Orders
+            .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
+            .Include(o => o.Refunds)
+            .FirstOrDefaultAsync(o => o.StripePaymentId == paymentIntentId);
+        if (order is null) return;
+
+        // Get the latest refund from Stripe charge
+        var stripeRefund = charge.Refunds?.Data?.FirstOrDefault();
+        if (stripeRefund is null) return;
+
+        // Idempotency: skip if we already have a refund with this Stripe refund ID
+        if (order.Refunds.Any(r => r.StripeRefundId == stripeRefund.Id)) return;
+
+        var refundAmount = stripeRefund.Amount / 100m; // Stripe uses cents
+        var existingRefundTotal = order.Refunds.Sum(r => r.Amount + r.TaxAmount);
+        var refundSubtotal = order.Subtotal > 0
+            ? Math.Round(refundAmount * order.Subtotal / order.Total, 2)
+            : refundAmount;
+        var refundTax = refundAmount - refundSubtotal;
+
+        var refund = new Refund
+        {
+            OrderId = order.Id,
+            Amount = refundSubtotal,
+            TaxAmount = refundTax,
+            Reason = "Refunded via Stripe dashboard",
+            StripeRefundId = stripeRefund.Id,
+            CreatedBy = "stripe-webhook",
+        };
+
+        // Create refund items proportionally across all non-refunded order items
+        var alreadyRefundedItemIds = order.Refunds
+            .SelectMany(r => r.Items)
+            .Select(ri => ri.OrderItemId)
+            .ToHashSet();
+
+        var eligibleItems = order.Items
+            .Where(oi => !alreadyRefundedItemIds.Contains(oi.Id))
+            .ToList();
+
+        if (eligibleItems.Count > 0)
+        {
+            var eligibleTotal = eligibleItems.Sum(oi => oi.TotalPrice);
+            foreach (var item in eligibleItems)
+            {
+                var itemShare = eligibleTotal > 0
+                    ? Math.Round(item.TotalPrice / eligibleTotal * refundSubtotal, 2)
+                    : 0;
+                refund.Items.Add(new RefundItem
+                {
+                    OrderItemId = item.Id,
+                    Amount = itemShare,
+                    Restocked = false,
+                });
+            }
+        }
+
+        db.Refunds.Add(refund);
+
+        // Update payment status
+        var totalRefunded = existingRefundTotal + refundAmount;
+        if (totalRefunded >= order.Total)
+            order.PaymentStatus = PaymentStatus.Refunded;
+
+        order.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        var broadcast = new { order.Id, RefundAmount = refundAmount, order.PaymentStatus };
+        await hub.Clients.Group("kitchen").SendAsync("OrderRefunded", broadcast);
+        await hub.Clients.Group($"order-{order.Id}").SendAsync("OrderRefunded", broadcast);
+    }
+
+    // Reuse the shared MapToDto from OrderEndpoints
+    private static OrderDto MapToDto(Order order) => OrderEndpoints.MapToDto(order);
 }
