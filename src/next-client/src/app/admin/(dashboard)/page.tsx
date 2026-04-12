@@ -75,6 +75,7 @@ export default function AdminDashboardPage() {
     connectOrderHub(
       () => {}, // onOrderCreated — not used on dashboard
       () => {}, // onOrderStatusChanged — not used on dashboard
+      () => {}, // onOrderPaymentUpdated — not used on dashboard
     ).then((conn) => {
       hubConn = conn as unknown as typeof hubConn;
       conn.on("LowStockAlert", (alert: { lowStockCount: number }) => {

@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { adminApi } from "@/lib/admin-api";
 import { resolveImageUrl } from "@/lib/api";
 import { useAuth } from "@/store/auth-context";
-import type { MenuItemDto, CategoryDto } from "@/types/api";
+import { RestockPolicy, type MenuItemDto, type CategoryDto } from "@/types/api";
 
 interface MenuItemFormSheetProps {
   open: boolean;
@@ -52,6 +52,7 @@ export function MenuItemFormSheet({
   const [active, setActive] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageApproximate, setImageApproximate] = useState(false);
+  const [restockPolicy, setRestockPolicy] = useState<RestockPolicy>(RestockPolicy.NonReturnable);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,6 +68,7 @@ export function MenuItemFormSheet({
       setActive(menuItem.active);
       setImageUrl(menuItem.imageUrl);
       setImageApproximate(menuItem.imageApproximate);
+      setRestockPolicy(menuItem.restockPolicy);
     } else {
       setName("");
       setDescription("");
@@ -76,6 +78,7 @@ export function MenuItemFormSheet({
       setActive(true);
       setImageUrl(null);
       setImageApproximate(false);
+      setRestockPolicy(RestockPolicy.NonReturnable);
     }
   }, [menuItem, open, categories]);
 
@@ -134,6 +137,7 @@ export function MenuItemFormSheet({
           categoryId,
           sortOrder: Number(sortOrder),
           active,
+          restockPolicy,
         });
         toast.success("Menu item updated");
       } else {
@@ -145,6 +149,7 @@ export function MenuItemFormSheet({
           isCustomizable,
           categoryId,
           sortOrder: Number(sortOrder),
+          restockPolicy,
         });
         toast.success("Menu item created");
       }
@@ -304,6 +309,32 @@ export function MenuItemFormSheet({
               className="bg-[#0a1628] border-[#1e3a5f] text-white"
               placeholder="0"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[#7a9bb5]">Restock Policy</Label>
+            <Select
+              value={String(restockPolicy)}
+              onValueChange={(v) => setRestockPolicy(Number(v) as RestockPolicy)}
+            >
+              <SelectTrigger className="bg-[#0a1628] border-[#1e3a5f] text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0d1f3c] border-[#1e3a5f]">
+                <SelectItem
+                  value={String(RestockPolicy.NonReturnable)}
+                  className="text-white focus:bg-[#00e5ff]/10 focus:text-[#00e5ff]"
+                >
+                  Non-returnable
+                </SelectItem>
+                <SelectItem
+                  value={String(RestockPolicy.Returnable)}
+                  className="text-white focus:bg-[#00e5ff]/10 focus:text-[#00e5ff]"
+                >
+                  Returnable
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex items-center space-x-2">

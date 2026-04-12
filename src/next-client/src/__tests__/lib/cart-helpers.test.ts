@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getUnitPrice, getLineTotal, getDisplayName, type CartItem } from "@/types/cart";
-import type { MenuItemDto, MenuItemVariantDto, AvailableIngredientDto } from "@/types/api";
+import { RestockPolicy, type MenuItemDto, type MenuItemVariantDto, type AvailableIngredientDto } from "@/types/api";
 
 function makeMenuItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
   return {
@@ -13,6 +13,7 @@ function makeMenuItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
     isCustomizable: false,
     active: true,
     sortOrder: 1,
+    restockPolicy: RestockPolicy.NonReturnable,
     variants: [],
     availableIngredients: null,
     ...overrides,

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { CartProvider, useCart } from "@/store/cart-context";
-import type { MenuItemDto, MenuItemVariantDto, AvailableIngredientDto } from "@/types/api";
+import { RestockPolicy, type MenuItemDto, type MenuItemVariantDto, type AvailableIngredientDto } from "@/types/api";
 import type { CartItem } from "@/types/cart";
 
 function makeMenuItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
@@ -15,6 +15,7 @@ function makeMenuItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
     isCustomizable: false,
     active: true,
     sortOrder: 1,
+    restockPolicy: RestockPolicy.NonReturnable,
     variants: [],
     availableIngredients: null,
     ...overrides,

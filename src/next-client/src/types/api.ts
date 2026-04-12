@@ -18,6 +18,11 @@ export enum PaymentStatus {
   Refunded = 3,
 }
 
+export enum RestockPolicy {
+  NonReturnable = 0,
+  Returnable = 1,
+}
+
 export interface CategoryDto {
   id: string;
   name: string;
@@ -35,6 +40,7 @@ export interface MenuItemDto {
   isCustomizable: boolean;
   active: boolean;
   sortOrder: number;
+  restockPolicy: RestockPolicy;
   variants: MenuItemVariantDto[];
   availableIngredients: AvailableIngredientDto[] | null;
 }
@@ -171,6 +177,7 @@ export interface CreateMenuItemRequest {
   imageApproximate: boolean;
   isCustomizable: boolean;
   sortOrder: number;
+  restockPolicy: RestockPolicy;
 }
 
 export interface UpdateMenuItemRequest {
@@ -182,6 +189,7 @@ export interface UpdateMenuItemRequest {
   categoryId: string;
   sortOrder: number;
   active: boolean;
+  restockPolicy: RestockPolicy;
 }
 
 // ── Variant Mutations ──

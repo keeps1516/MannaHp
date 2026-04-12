@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { CartProvider, useCart } from "@/store/cart-context";
-import type { MenuItemDto, MenuItemVariantDto } from "@/types/api";
+import { RestockPolicy, type MenuItemDto, type MenuItemVariantDto } from "@/types/api";
 
 // Mock next/image, next/link, and next/navigation (Header renders CartDrawer which uses useRouter)
 vi.mock("next/image", () => ({
@@ -72,7 +72,7 @@ describe("Header", () => {
         menuItem: {
           id: "mi-1", categoryId: "cat-1", name: "Latte", description: null,
           imageUrl: null, imageApproximate: false, isCustomizable: false,
-          active: true, sortOrder: 0, variants: [], availableIngredients: null,
+          active: true, sortOrder: 0, restockPolicy: RestockPolicy.NonReturnable, variants: [], availableIngredients: null,
         },
         variant: { id: "v-1", name: "12oz", price: 4.75, sortOrder: 1, active: true },
         selectedIngredients: null,

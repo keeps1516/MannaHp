@@ -96,7 +96,7 @@ public class AuthorizationTests
     {
         var staffClient = await _factory.CreateStaffClientAsync();
         var response = await staffClient.PostAsJsonAsync("/api/menu-items",
-            new CreateMenuItemRequest(CatBowls, "Staff Item", null, null, false, false, 99));
+            new CreateMenuItemRequest(CatBowls, "Staff Item", null, null, false, false, 99, RestockPolicy.NonReturnable));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

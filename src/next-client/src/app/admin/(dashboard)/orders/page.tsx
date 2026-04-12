@@ -7,7 +7,7 @@ import { adminApi } from "@/lib/admin-api";
 import { useAuth } from "@/store/auth-context";
 import { connectOrderHub, disconnectOrderHub } from "@/lib/order-hub";
 import { OrderCard } from "@/components/admin/order-card";
-import { OrderStatus } from "@/types/api";
+import { OrderStatus, PaymentStatus } from "@/types/api";
 import type { OrderDto } from "@/types/api";
 
 export default function OrdersPage() {
@@ -58,6 +58,14 @@ export default function OrdersPage() {
             )
         );
       },
+      // onOrderPaymentUpdated
+      (update: { id: string; paymentStatus: PaymentStatus }) => {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === update.id ? { ...o, paymentStatus: update.paymentStatus } : o
+          )
+        );
+      },
       // onReconnected
       () => {
         setConnectionStatus("live");
@@ -93,6 +101,24 @@ export default function OrdersPage() {
       }
     };
   }, [token, fetchOrders]);
+
+  async function handleMarkPaid(orderId: string) {
+    if (!token) return;
+
+    const previous = orders;
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId ? { ...o, paymentStatus: PaymentStatus.Paid } : o
+      )
+    );
+
+    try {
+      await adminApi.markOrderPaid(token, orderId);
+    } catch {
+      toast.error("Failed to mark order as paid");
+      setOrders(previous);
+    }
+  }
 
   async function handleAdvance(orderId: string, nextStatus: OrderStatus) {
     if (!token) return;
@@ -168,6 +194,7 @@ export default function OrdersPage() {
           color="amber"
           orders={received}
           onAdvance={handleAdvance}
+          onMarkPaid={handleMarkPaid}
           autoExpand="none"
           className="order-3 lg:order-1"
         />
@@ -179,6 +206,7 @@ export default function OrdersPage() {
           color="cyan"
           orders={preparing}
           onAdvance={handleAdvance}
+          onMarkPaid={handleMarkPaid}
           autoExpand="first"
           className="order-2 lg:order-2"
         />
@@ -190,6 +218,7 @@ export default function OrdersPage() {
           color="emerald"
           orders={ready}
           onAdvance={handleAdvance}
+          onMarkPaid={handleMarkPaid}
           autoExpand="all"
           className="order-1 lg:order-3"
         />
@@ -204,6 +233,7 @@ function KanbanColumn({
   color,
   orders,
   onAdvance,
+  onMarkPaid,
   autoExpand = "all",
   className,
 }: {
@@ -212,6 +242,7 @@ function KanbanColumn({
   color: "amber" | "cyan" | "emerald";
   orders: OrderDto[];
   onAdvance: (orderId: string, nextStatus: OrderStatus) => Promise<void>;
+  onMarkPaid: (orderId: string) => Promise<void>;
   autoExpand?: "none" | "first" | "all";
   className?: string;
 }) {
@@ -256,6 +287,7 @@ function KanbanColumn({
               key={order.id}
               order={order}
               onAdvance={onAdvance}
+              onMarkPaid={onMarkPaid}
               defaultOpen={
                 autoExpand === "all" ||
                 (autoExpand === "first" && index === 0)

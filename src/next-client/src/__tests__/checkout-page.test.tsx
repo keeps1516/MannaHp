@@ -3,7 +3,7 @@ import { render, waitFor } from "@testing-library/react";
 import { CartProvider } from "@/store/cart-context";
 import type { CartItem } from "@/types/cart";
 import type { CreateOrderResponse } from "@/types/api";
-import { PaymentMethod, PaymentStatus, OrderStatus } from "@/types/api";
+import { PaymentMethod, PaymentStatus, OrderStatus, RestockPolicy } from "@/types/api";
 import { useState, useEffect } from "react";
 import { useCart } from "@/store/cart-context";
 import CheckoutPage from "@/app/(customer)/checkout/page";
@@ -59,6 +59,7 @@ function makeCartItem(): Omit<CartItem, "id"> {
       isCustomizable: false,
       active: true,
       sortOrder: 0,
+      restockPolicy: RestockPolicy.NonReturnable,
       variants: [],
       availableIngredients: null,
     },

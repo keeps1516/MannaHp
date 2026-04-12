@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using FluentAssertions;
 using MannaHp.Server.Tests.Fixtures;
 using MannaHp.Shared.DTOs;
+using MannaHp.Shared.Enums;
 
 namespace MannaHp.Server.Tests.Endpoints;
 
@@ -89,7 +90,7 @@ public class MenuItemEndpointsTests
     public async Task Post_ValidRequest_Returns201()
     {
         var ownerClient = await _factory.CreateOwnerClientAsync();
-        var req = new CreateMenuItemRequest(CatBowls, "Test Item", "Description", null, false, false, 99);
+        var req = new CreateMenuItemRequest(CatBowls, "Test Item", "Description", null, false, false, 99, RestockPolicy.NonReturnable);
         var response = await ownerClient.PostAsJsonAsync("/api/menu-items", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -103,7 +104,7 @@ public class MenuItemEndpointsTests
     public async Task Post_NonexistentCategoryId_Returns400()
     {
         var ownerClient = await _factory.CreateOwnerClientAsync();
-        var req = new CreateMenuItemRequest(Guid.NewGuid(), "Bad Item", null, null, false, false, 0);
+        var req = new CreateMenuItemRequest(Guid.NewGuid(), "Bad Item", null, null, false, false, 0, RestockPolicy.NonReturnable);
         var response = await ownerClient.PostAsJsonAsync("/api/menu-items", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -113,7 +114,7 @@ public class MenuItemEndpointsTests
     public async Task Post_EmptyName_Returns400()
     {
         var ownerClient = await _factory.CreateOwnerClientAsync();
-        var req = new CreateMenuItemRequest(CatBowls, "", null, null, false, false, 0);
+        var req = new CreateMenuItemRequest(CatBowls, "", null, null, false, false, 0, RestockPolicy.NonReturnable);
         var response = await ownerClient.PostAsJsonAsync("/api/menu-items", req);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, act, waitFor } from "@testing-library/react"
 import { BowlBuilder } from "@/components/bowl-builder";
 import { CartProvider, useCart } from "@/store/cart-context";
 import type { MenuItemDto, AvailableIngredientDto } from "@/types/api";
-import { UnitOfMeasure } from "@/types/api";
+import { UnitOfMeasure, RestockPolicy } from "@/types/api";
 import type { CartItem } from "@/types/cart";
 
 vi.mock("sonner", () => ({
@@ -41,6 +41,7 @@ function makeBowlItem(
     isCustomizable: true,
     active: true,
     sortOrder: 1,
+    restockPolicy: RestockPolicy.NonReturnable,
     variants: [],
     availableIngredients: ingredients,
   };

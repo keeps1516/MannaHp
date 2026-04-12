@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ItemCard } from "@/components/item-card";
-import type { MenuItemDto } from "@/types/api";
+import { RestockPolicy, type MenuItemDto } from "@/types/api";
 
 function makeItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
   return {
@@ -14,6 +14,7 @@ function makeItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
     isCustomizable: false,
     active: true,
     sortOrder: 1,
+    restockPolicy: RestockPolicy.NonReturnable,
     variants: [
       { id: "v1", name: "12oz", price: 4.75, sortOrder: 1, active: true },
       { id: "v2", name: "16oz", price: 5.25, sortOrder: 2, active: true },

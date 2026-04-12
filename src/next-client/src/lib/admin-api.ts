@@ -151,6 +151,9 @@ export const adminApi = {
       { method: "PATCH", body: JSON.stringify({ status }) }
     ),
 
+  markOrderPaid: (token: string, id: string) =>
+    adminFetchNoBody(`/api/orders/${id}/mark-paid`, token, { method: "PATCH" }),
+
   // ── Categories ──
   getCategories: (token: string) =>
     adminFetch<CategoryDto[]>("/api/categories", token),

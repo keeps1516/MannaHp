@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { FixedItemDetail } from "@/components/fixed-item-detail";
 import { CartProvider } from "@/store/cart-context";
 import type { MenuItemDto, AvailableIngredientDto } from "@/types/api";
-import { UnitOfMeasure } from "@/types/api";
+import { UnitOfMeasure, RestockPolicy } from "@/types/api";
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...rest }: { children: React.ReactNode; href: string }) => (
@@ -55,6 +55,7 @@ function makeLatte(
     isCustomizable: false,
     active: true,
     sortOrder: 1,
+    restockPolicy: RestockPolicy.NonReturnable,
     variants: [
       { id: "v-12", name: "12oz", price: 4.75, sortOrder: 1, active: true },
       { id: "v-16", name: "16oz", price: 5.25, sortOrder: 2, active: true },

@@ -4,7 +4,7 @@ import {
   HubConnectionState,
   LogLevel,
 } from "@microsoft/signalr";
-import type { OrderDto, OrderStatus } from "@/types/api";
+import type { OrderDto, OrderStatus, PaymentStatus } from "@/types/api";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5082";
@@ -24,6 +24,7 @@ export function getOrderHubConnection(): HubConnection | null {
 export async function connectOrderHub(
   onOrderCreated: (order: OrderDto) => void,
   onOrderStatusChanged: (update: { id: string; status: OrderStatus }) => void,
+  onOrderPaymentUpdated: (update: { id: string; paymentStatus: PaymentStatus }) => void,
   onReconnected?: () => void,
   onDisconnected?: () => void
 ): Promise<HubConnection> {
@@ -48,6 +49,7 @@ export async function connectOrderHub(
 
   conn.on("OrderCreated", onOrderCreated);
   conn.on("OrderStatusChanged", onOrderStatusChanged);
+  conn.on("OrderPaymentUpdated", onOrderPaymentUpdated);
 
   conn.onreconnected(() => {
     conn.invoke("JoinKitchen").catch(() => {});

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MenuItemList } from "@/components/admin/menu-item-list";
-import type { MenuItemDto, CategoryDto } from "@/types/api";
+import { RestockPolicy, type MenuItemDto, type CategoryDto } from "@/types/api";
 
 vi.mock("@/store/auth-context", () => ({
   useAuth: () => ({ token: "test-token" }),
@@ -35,6 +35,7 @@ function makeItem(overrides: Partial<MenuItemDto> = {}): MenuItemDto {
     isCustomizable: false,
     active: true,
     sortOrder: 1,
+    restockPolicy: RestockPolicy.NonReturnable,
     variants: [{ id: "v1", name: "12oz", price: 4.75, sortOrder: 1, active: true }],
     availableIngredients: null,
     ...overrides,

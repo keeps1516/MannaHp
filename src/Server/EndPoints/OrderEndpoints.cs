@@ -178,7 +178,7 @@ public static class OrderEndpoints
             var order = await db.Orders
                 .Include(o => o.Items).ThenInclude(oi => oi.MenuItem)
                 .Include(o => o.Items).ThenInclude(oi => oi.Variant)
-                .Include(o => o.Items).ThenInclude(oia => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
+                .Include(o => o.Items).ThenInclude(oi => oi.Ingredients).ThenInclude(oii => oii.Ingredient)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order is null) return Results.NotFound();
@@ -306,6 +306,30 @@ public static class OrderEndpoints
             return Results.Ok(update);
         }).AddEndpointFilter<ValidationFilter<UpdateOrderStatusRequest>>()
           .RequireAuthorization("Staff");
+
+        // PATCH — mark in-store order as paid
+        group.MapPatch("/{id:guid}/mark-paid", async (Guid id, MannaDbContext db,
+            IHubContext<OrderHub> hub) =>
+        {
+            var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id);
+            if (order is null) return Results.NotFound();
+
+            if (order.PaymentMethod != PaymentMethod.InStore)
+                return Results.BadRequest(new { error = "Only in-store orders can be marked paid." });
+
+            if (order.PaymentStatus == PaymentStatus.Paid)
+                return Results.BadRequest(new { error = "Order is already marked as paid." });
+
+            order.PaymentStatus = PaymentStatus.Paid;
+            order.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            var update = new { order.Id, PaymentStatus = order.PaymentStatus };
+            await hub.Clients.Group("kitchen").SendAsync("OrderPaymentUpdated", update);
+            await hub.Clients.Group($"order-{id}").SendAsync("OrderPaymentUpdated", update);
+
+            return Results.NoContent();
+        }).RequireAuthorization("Staff");
     }
 
     private static async Task DecrementInventoryAsync(MannaDbContext db, Order order)

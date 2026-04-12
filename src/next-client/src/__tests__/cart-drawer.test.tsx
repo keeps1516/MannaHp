@@ -4,7 +4,7 @@ import { CartDrawer } from "@/components/cart-drawer";
 import { CartProvider } from "@/store/cart-context";
 import type { CartItem } from "@/types/cart";
 import type { CreateOrderResponse } from "@/types/api";
-import { PaymentMethod, PaymentStatus, OrderStatus } from "@/types/api";
+import { PaymentMethod, PaymentStatus, OrderStatus, RestockPolicy } from "@/types/api";
 
 // --- Mocks ---
 
@@ -45,6 +45,7 @@ function makeCartItem(overrides?: Partial<CartItem>): CartItem {
       isCustomizable: false,
       active: true,
       sortOrder: 0,
+      restockPolicy: RestockPolicy.NonReturnable,
       variants: [],
       availableIngredients: null,
     },

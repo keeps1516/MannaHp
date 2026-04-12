@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { timeAgo } from "@/lib/time-ago";
 import { formatMeasurement } from "@/lib/unit-label";
-import { OrderStatus, PaymentMethod } from "@/types/api";
+import { OrderStatus, PaymentMethod, PaymentStatus } from "@/types/api";
 import type { OrderDto } from "@/types/api";
 
 interface OrderCardProps {
   order: OrderDto;
   onAdvance: (orderId: string, nextStatus: OrderStatus) => Promise<void>;
+  onMarkPaid?: (orderId: string) => Promise<void>;
   defaultOpen?: boolean;
 }
 
@@ -35,11 +36,18 @@ const statusConfig: Record<
 export function OrderCard({
   order,
   onAdvance,
+  onMarkPaid,
   defaultOpen = true,
 }: OrderCardProps) {
   const [advancing, setAdvancing] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
   const [open, setOpen] = useState(defaultOpen);
   const config = statusConfig[order.status];
+
+  const canMarkPaid =
+    onMarkPaid &&
+    order.paymentMethod === PaymentMethod.InStore &&
+    order.paymentStatus === PaymentStatus.Pending;
 
   async function handleAdvance(e: React.MouseEvent) {
     e.stopPropagation();
@@ -49,6 +57,18 @@ export function OrderCard({
       await onAdvance(order.id, config.nextStatus);
     } finally {
       setAdvancing(false);
+    }
+  }
+
+  async function handleMarkPaid(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!onMarkPaid) return;
+    setMarkingPaid(true);
+    try {
+      await onMarkPaid(order.id);
+    } finally {
+      setMarkingPaid(false);
     }
   }
 
@@ -87,11 +107,21 @@ export function OrderCard({
 
       {/* Body — collapsible, tap to advance */}
       {open && (
-        <button
-          type="button"
-          onClick={handleAdvance}
-          disabled={advancing || !config}
-          className="w-full text-left px-4 pb-4 space-y-3 cursor-pointer disabled:cursor-default"
+        <div
+          role={config ? "button" : undefined}
+          tabIndex={config ? 0 : undefined}
+          onClick={(e) => {
+            if (advancing || !config) return;
+            handleAdvance(e);
+          }}
+          onKeyDown={(e) => {
+            if (!config || advancing) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleAdvance(e as unknown as React.MouseEvent);
+            }
+          }}
+          className="w-full text-left px-4 pb-4 space-y-3 cursor-pointer"
         >
           {/* Items */}
           <div className="space-y-2">
@@ -157,7 +187,7 @@ export function OrderCard({
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-2 border-t border-white/5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold text-white">
                 ${order.total.toFixed(2)}
               </span>
@@ -172,14 +202,40 @@ export function OrderCard({
                   ? "In-Store"
                   : "Card"}
               </Badge>
+              {order.paymentStatus === PaymentStatus.Pending && (
+                <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs hover:bg-amber-500/10">
+                  Unpaid
+                </Badge>
+              )}
+              {order.paymentStatus === PaymentStatus.Paid && (
+                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs hover:bg-emerald-500/10">
+                  Paid
+                </Badge>
+              )}
             </div>
-            {config && (
-              <span className="text-xs text-[#4a6a85]">
-                Tap → {config.label}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {canMarkPaid && (
+                <button
+                  type="button"
+                  onClick={handleMarkPaid}
+                  disabled={markingPaid}
+                  className="text-xs px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {markingPaid ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Mark Paid"
+                  )}
+                </button>
+              )}
+              {config && (
+                <span className="text-xs text-[#4a6a85]">
+                  Tap → {config.label}
+                </span>
+              )}
+            </div>
           </div>
-        </button>
+        </div>
       )}
     </div>
   );
