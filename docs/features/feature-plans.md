@@ -28,6 +28,8 @@
 | F15 | Email-Based Inventory Restocking | [F15](#f15-email-based-inventory-restocking) | Medium - automates supplier receipt processing |
 | F16 | TV Menu Board Display | [F16](#f16-tv-menu-board-display) | N/A - TV/kiosk display for in-store | ✅ |
 | F17 | Store Hours & Order Availability | [F17](#f17-store-hours--order-availability) | Critical - prevents orders when closed |
+| F18 | Unskippable Store-Closed Popup | [F18](#f18-unskippable-store-closed-popup) | Critical - blocks front page when closed or owner is sick |
+| F19 | In-Store-Only Payments Feature Flag | [F19](#f19-in-store-only-payments-feature-flag) | Critical - gates Stripe until tested |
 
 ---
 
@@ -2049,3 +2051,284 @@ Priority: manual override takes precedence — if paused, scheduled hours don't 
 5. Customer-facing closed banner
 6. TV display status indicator
 7. Checkout guard
+
+---
+
+## F18: Unskippable Store-Closed Popup
+
+**Priority:** F18
+**Created:** April 13, 2026
+**Related:** [F17](#f17-store-hours--order-availability) is the long-term scheduled-hours solution. F18 is the tactical, same-day version — a single on/off switch with no schedule. F17 can absorb F18's `StoreStatus` override when F17 is built.
+
+### Problem
+
+There is currently no way for the owner to prevent customers from ordering on short notice. When the store is shut unexpectedly (owner is sick, kitchen equipment down, short-staffed, closed early), customers can still reach the site and place orders that nobody will make. F17 is the right long-term answer, but it is a large feature (weekly schedule config, timezone math, pause/resume endpoints, TV indicator). The owner needs something that ships immediately: flip a switch, and a full-screen unskippable popup appears over the customer front page so no one can order.
+
+### Solution
+
+A single `StoreStatus` setting in `app_settings` with three values: `open` (default), `closed`, `sick`. When the value is anything other than `open`, the customer layout renders a fixed full-screen overlay with a message pulled from `StoreStatusMessage`. The overlay has no close button, no outside-click dismiss, and blocks all interaction with the underlying page. The backend also rejects any order creation attempt while the store is non-open, so stale clients cannot sneak an order through.
+
+Because the overlay lives in the customer layout (`src/next-client/src/app/(customer)/layout.tsx`), it covers every customer-facing route — home, category, item, cart, checkout, order status — with one change.
+
+### Requirements
+
+1. **Owner toggle** — admin settings page exposes a 3-way radio (Open / Closed / Out Sick) plus a free-text message field
+2. **Unskippable overlay** — full-screen, fixed, z-index above everything else, no close button, no Escape-to-dismiss, no outside-click dismiss
+3. **Server-side enforcement** — `POST /api/orders` returns 403 with the configured message when `StoreStatus != "open"`, so even stale clients cannot submit
+4. **Reasonable default** — when the key is missing, the app behaves as if `StoreStatus == "open"` (no popup)
+5. **Custom message per status** — single `StoreStatusMessage` field drives the overlay body; owner writes whatever makes sense ("We're closed today — see you tomorrow!", "Owner is out sick, back Monday")
+6. **Admin interface still works** — the popup only renders on the customer route group, not on `/admin/*`, so the owner can always get back in to toggle it off
+
+### Design Decisions
+
+#### Storage
+
+- Reuse the existing `app_settings` key/value table (`src/Server/Data/Migrations/20260214132433_ReceiptPreReqs.cs:42`). No schema migration.
+- Two new keys: `StoreStatus` (values `open` / `closed` / `sick`) and `StoreStatusMessage` (free-text).
+- Defaults applied in `/api/settings/public` when either key is missing.
+
+#### Endpoint Reuse (no new endpoint)
+
+- `GET /api/settings/public` (`src/Server/EndPoints/SettingsEndpoints.cs:20`) already serves anonymous configuration to the customer. Extend it to also return `storeStatus` and `storeStatusMessage`.
+- `PUT /api/settings` (`src/Server/EndPoints/SettingsEndpoints.cs:105`) is a generic upsert and needs no changes — new keys just work.
+
+#### Why "unskippable"
+
+The whole point is that customers cannot dismiss the popup and order anyway. Implementation:
+
+- Fixed full-screen `div` (`position: fixed; inset: 0; z-index: 9999`).
+- No close button, no `X` icon.
+- Captures all pointer events; the underlying page has `pointer-events: none` while the overlay is active.
+- Polls `/api/settings/public` every ~60s so the overlay auto-appears if the owner flips the switch in another tab.
+
+#### Relationship to F17
+
+F17 is the long-term scheduled-hours + pause/resume solution. F18 is a subset of F17's "manual override" feature. When F17 is built, `StoreStatus` becomes F17's manual override toggle and the two features merge. Until then, F18 stands alone as a minimum-viable close-the-door switch.
+
+### API Changes
+
+| Method | Path | Auth | Change |
+|--------|------|------|--------|
+| `GET` | `/api/settings/public` | Anonymous | **Modified.** Add `storeStatus` (`"open" \| "closed" \| "sick"`) and `storeStatusMessage` (string) to the response. |
+| `POST` | `/api/orders` | CanOrder | **Modified.** When `StoreStatus != "open"`, return 403 with `{ error: storeStatusMessage }` before any other processing. |
+| `PUT` | `/api/settings` | Owner | **No change.** Generic upsert already handles the new keys. |
+
+### Frontend Changes
+
+#### New: `src/next-client/src/components/store-closed-overlay.tsx`
+
+Full-screen fixed overlay component. Props: `status: "closed" | "sick"`, `message: string`. Renders an icon (Store/HeartPulse), heading ("We're Closed" / "Out Sick"), and the message. No close button.
+
+#### Modified: `src/next-client/src/app/(customer)/layout.tsx`
+
+- Fetch `/api/settings/public` on mount (reuse `api.getPublicSettings()`).
+- When `storeStatus !== "open"`, render `<StoreClosedOverlay />` and wrap `{children}` in a `<div style={{ pointerEvents: "none" }}>`.
+- Poll every 60s so the overlay picks up changes without a reload.
+
+#### Modified: `src/next-client/src/app/admin/(dashboard)/settings/page.tsx`
+
+Add a new "Store Status" card above the existing Store Settings card:
+
+- Label + 3-way radio (Open / Closed / Out Sick) bound to a local state var
+- `Textarea` for the custom message (reuse `@/components/ui/textarea` if it exists, otherwise `Input`)
+- Save button writes `StoreStatus` and `StoreStatusMessage` through the existing `adminApi.updateSettings(token, [...])` helper (`src/next-client/src/lib/admin-api.ts:133`)
+- Loads current values in the existing `loadSettings()` callback
+
+#### Modified: `src/next-client/src/lib/api.ts`
+
+Widen the return type of `getPublicSettings()` to include the two new fields (currently `{ taxRate: number }` at `src/next-client/src/lib/api.ts:68`).
+
+### Tests (Write Before Implementation)
+
+#### Backend — `tests/MannaHp.Server.Tests/Endpoints/StoreStatusTests.cs`
+
+```
+1. GET /api/settings/public defaults to storeStatus "open" when key is missing
+2. GET /api/settings/public returns storeStatus "closed" after PUT
+3. GET /api/settings/public returns storeStatus "sick" after PUT
+4. GET /api/settings/public returns default storeStatusMessage when key is missing
+5. POST /api/orders returns 403 when storeStatus is "closed"
+6. POST /api/orders returns 403 when storeStatus is "sick"
+7. POST /api/orders returns 403 body includes the configured StoreStatusMessage
+8. POST /api/orders succeeds when storeStatus is "open"
+9. PUT /api/settings requires Owner policy (unchanged)
+```
+
+#### Frontend — `src/next-client/src/__tests__/components/store-closed-overlay.test.tsx`
+
+```
+1. overlay does not render when storeStatus === "open"
+2. overlay renders when storeStatus === "closed"
+3. overlay renders when storeStatus === "sick"
+4. overlay has no close button (asserts no element with role=button for dismiss)
+5. overlay displays the StoreStatusMessage text
+6. underlying page has pointer-events: none while overlay is active
+7. admin /admin/settings page does NOT render the overlay (lives in a different layout group)
+```
+
+#### Frontend — `src/next-client/src/__tests__/admin/store-status-settings.test.tsx`
+
+```
+1. admin settings page shows the 3-way status radio
+2. selecting "Closed" + Save writes StoreStatus="closed" via adminApi.updateSettings
+3. editing the message field + Save writes StoreStatusMessage via adminApi.updateSettings
+4. loading the page calls adminApi.getSettings and hydrates the radio
+```
+
+### Implementation Order
+
+1. Extend `/api/settings/public` to return `storeStatus` + `storeStatusMessage` with defaults
+2. Add `POST /api/orders` server-side guard (403 when not open)
+3. Add admin Store Status card in `settings/page.tsx`
+4. Build `store-closed-overlay.tsx` component
+5. Wire overlay into customer layout with polling
+6. Tests
+
+---
+
+## F19: In-Store-Only Payments Feature Flag
+
+**Priority:** F19
+**Created:** April 13, 2026
+
+### Problem
+
+The Stripe integration is built end-to-end (Elements, PaymentIntents, webhooks, saved cards, card-brand/last4 capture on receipts) but has not been fully exercised against real cards in production. The owner wants to start using the app in-store immediately — accepting in-store payments only — and enable Stripe later, once they're confident in the integration. Today there is no clean way to disable the "Pay Online" path without deleting code, breaking tests, or rotating Stripe keys. The Stripe keys are also useful to keep in env vars for local testing even while the feature is off in production.
+
+### Solution
+
+Add an owner-controlled boolean setting `CardPaymentsEnabled` in `app_settings` (default `true`). When set to `false`:
+
+- The `Pay Online` button in the cart drawer is hidden; `Pay In-Store` goes full-width.
+- The customer `/checkout` page short-circuits and shows a "Card payments are not currently available — please place your order in-store" message with a Back-to-cart button, instead of initializing Stripe Elements.
+- `POST /api/orders` rejects any request with `paymentMethod == Card` with a 422, even if the client somehow sends one.
+- The admin settings page exposes a simple on/off toggle so the owner can flip Stripe back on when they're ready.
+
+The flag is **independent of** `StripeService.IsConfigured` (which just checks that the secret key is present). This lets the owner leave keys in env vars while the customer-facing Stripe path is disabled.
+
+### Requirements
+
+1. **Default on** — existing deployments keep working. Owner must explicitly opt out.
+2. **UI hides Pay Online** — no visible Stripe path in the cart drawer when disabled
+3. **Checkout dead-ends gracefully** — `/checkout` shows a clear message if somehow reached
+4. **Server-side enforcement** — `/api/orders` rejects `Card` orders with 422 when flag is off, even if the client is stale
+5. **Admin toggle** — single switch on the settings page, round-trips through existing settings endpoints
+6. **No key rotation required** — Stripe keys can stay in env vars while the feature is disabled
+
+### Design Decisions
+
+#### Storage
+
+- Reuse `app_settings`. New key: `CardPaymentsEnabled`. Values: `"true"` / `"false"` (strings, matching the existing key/value column type).
+- Default: `true` (applied in `/api/settings/public` when the key is missing) so existing deployments don't suddenly break.
+
+#### Endpoint Reuse (no new endpoint)
+
+- `GET /api/settings/public` already serves the customer-visible config bundle. Add `cardPaymentsEnabled: boolean` to the response.
+- `PUT /api/settings` is a generic upsert — no changes needed.
+
+#### Why a separate flag (not `StripeService.IsConfigured`)
+
+`StripeService.IsConfigured` answers the question "are Stripe keys present?". That's a deployment concern. `CardPaymentsEnabled` answers "does the owner want the Pay Online button visible today?" — a product/business decision. They need to be separate so the owner can run the app with keys present but Stripe hidden.
+
+The server-side guard in `src/Server/EndPoints/OrderEndpoints.cs:139` already rejects `Card` orders when `!stripe.IsConfigured`. F19 adds a sibling check for `CardPaymentsEnabled`.
+
+#### Cart context as the carrier
+
+`src/next-client/src/store/cart-context.tsx:118` already fetches `/api/settings/public` for `taxRate`. Add `cardPaymentsEnabled` to the same fetch so every customer component that needs it can read it off the cart context without a second request.
+
+### API Changes
+
+| Method | Path | Auth | Change |
+|--------|------|------|--------|
+| `GET` | `/api/settings/public` | Anonymous | **Modified.** Add `cardPaymentsEnabled: boolean` (default `true`). |
+| `POST` | `/api/orders` | CanOrder | **Modified.** When `req.PaymentMethod == Card` and `CardPaymentsEnabled == "false"`, return 422 `{ error: "Card payments are temporarily disabled. Please pay in-store." }`. Sibling check to the existing `!stripe.IsConfigured` guard. |
+
+### Frontend Changes
+
+#### Modified: `src/next-client/src/lib/api.ts`
+
+Widen `getPublicSettings()` return type to `{ taxRate: number; cardPaymentsEnabled: boolean; ... }`.
+
+#### Modified: `src/next-client/src/store/cart-context.tsx`
+
+- Add `cardPaymentsEnabled: boolean` to `CartContextValue` and the context state.
+- Default to `true` for optimistic rendering; update after `/api/settings/public` resolves.
+
+#### Modified: `src/next-client/src/components/cart-drawer.tsx:244`
+
+- When `!cart.cardPaymentsEnabled`, hide the `Pay Online` button entirely and let `Pay In-Store` take full width.
+- The existing `handlePayWithCard` handler stays but is simply unreachable when the button is hidden.
+
+#### Modified: `src/next-client/src/app/(customer)/checkout/page.tsx`
+
+- On mount, check `cart.cardPaymentsEnabled`. If `false`, skip `startCardPayment`, render a disabled-card message card (reuse the existing error-style div at `checkout/page.tsx:172`), and show a "Back to cart" button.
+- The existing Stripe initialization block only runs when the flag is true.
+
+#### Modified: `src/next-client/src/app/admin/(dashboard)/settings/page.tsx`
+
+Add a new "Payments" card (above Staff Registration, below Store Settings):
+
+- Label + toggle/checkbox for "Enable card payments (Stripe)"
+- Helper text: "Disable this to force in-store payments only. Use while Stripe integration is being tested."
+- Save writes `CardPaymentsEnabled` as `"true"` / `"false"` through the existing `adminApi.updateSettings()` helper
+
+### Tests (Write Before Implementation)
+
+#### Backend — `tests/MannaHp.Server.Tests/Endpoints/CardPaymentsFlagTests.cs`
+
+```
+1. GET /api/settings/public defaults to cardPaymentsEnabled: true when key is missing
+2. GET /api/settings/public returns cardPaymentsEnabled: false after PUT "false"
+3. GET /api/settings/public returns cardPaymentsEnabled: true after PUT "true"
+4. POST /api/orders with PaymentMethod.Card returns 422 when flag is false
+5. POST /api/orders with PaymentMethod.Card succeeds when flag is true (and Stripe is configured)
+6. POST /api/orders with PaymentMethod.InStore succeeds when flag is false
+7. The 422 response body contains a user-facing error message
+8. Flag check is independent of StripeService.IsConfigured
+```
+
+#### Frontend — `src/next-client/src/__tests__/cart-drawer.test.tsx` (extend existing)
+
+```
+1. cart drawer shows both Pay Online and Pay In-Store when cardPaymentsEnabled is true
+2. cart drawer hides Pay Online when cardPaymentsEnabled is false
+3. Pay In-Store button is full-width when Pay Online is hidden
+```
+
+#### Frontend — `src/next-client/src/__tests__/checkout-page.test.tsx` (extend existing)
+
+```
+1. checkout page renders the Stripe Elements flow when cardPaymentsEnabled is true
+2. checkout page renders the "card payments unavailable" message when cardPaymentsEnabled is false
+3. checkout page offers a "Back to cart" button when disabled
+4. checkout page does NOT call /api/orders when disabled
+```
+
+#### Frontend — `src/next-client/src/__tests__/admin/payments-settings.test.tsx`
+
+```
+1. admin settings page shows the Enable Card Payments toggle
+2. toggling off and saving writes CardPaymentsEnabled="false" via adminApi.updateSettings
+3. toggling on and saving writes CardPaymentsEnabled="true" via adminApi.updateSettings
+4. loading the page hydrates the toggle from adminApi.getSettings
+```
+
+### Implementation Order
+
+1. Extend `/api/settings/public` to return `cardPaymentsEnabled` with default `true`
+2. Add `POST /api/orders` server-side guard (422 when `Card` + flag off)
+3. Extend cart context to surface the flag
+4. Hide Pay Online button in cart drawer
+5. Add checkout page short-circuit
+6. Add admin Payments card toggle
+7. Tests
+
+### Future: Turning Stripe back on
+
+When the owner is ready to enable Stripe:
+1. Verify Stripe keys are set in env / `.env`
+2. Run the Stripe CLI webhook forwarder locally (or point the dashboard at the prod webhook URL)
+3. Place a test order with a 4242 card end-to-end
+4. Flip the admin toggle to "Enabled"
+5. Smoke-test a real card in-store before announcing

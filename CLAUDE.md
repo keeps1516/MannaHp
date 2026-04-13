@@ -318,6 +318,23 @@ volumes:
 - **Tax:** single flat rate stored in `app_settings`, captured on each order
 - **Inventory:** customizable items decrement from `order_item_ingredients.quantity_used`; fixed items decrement from `recipe_ingredients.quantity`
 
+### App Settings Keys (`app_settings` table)
+
+The `app_settings` table is a simple key/value store used for all owner-configurable, non-menu settings. Keys are read lazily by the code that needs them and defaults are applied when a key is missing, so new keys can be introduced without a migration.
+
+| Key | Values | Purpose |
+|---|---|---|
+| `StoreName` / `StoreAddress` / `StoreCity` / `StorePhone` | string | Receipt header (seeded) |
+| `DefaultTaxRate` | decimal string (e.g. `"0.0825"`) | Flat tax rate applied to every order (seeded) |
+| `ReceiptFooter` | string | Receipt footer line (seeded) |
+| `StoreTokenRequiredMessage` | string | Shown when a customer tries to order without an in-store QR token |
+| `StoreStatus` | `"open"` \| `"closed"` \| `"sick"` | **F18** — unskippable customer popup trigger. Default: `"open"`. When anything other than `"open"`, the customer front page shows a full-screen blocking overlay and `POST /api/orders` returns 403. |
+| `StoreStatusMessage` | string | **F18** — message shown inside the store-closed overlay |
+| `CardPaymentsEnabled` | `"true"` \| `"false"` | **F19** — feature flag for the Stripe/Pay Online path. Default: `"true"`. When `"false"`, the customer cart hides the Pay Online button, `/checkout` short-circuits, and `POST /api/orders` rejects `Card` payments with a 422 — forcing all orders through the in-store flow. Independent of `StripeService.IsConfigured`. |
+| `TvMenuConfig` | JSON | TV menu board configuration (F16) |
+
+Defaults are centralized in `src/Server/EndPoints/SettingsEndpoints.cs` (anonymous `GET /api/settings/public`) for keys the customer frontend needs and in the consuming endpoint for keys used server-side only. The owner edits all keys through `PUT /api/settings` via the admin settings page.
+
 
 ## Build Priority
 
